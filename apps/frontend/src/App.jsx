@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { fetchHealth } from "./api/health";
 import "./App.css";
 
 import Button from "./components/Button/Button";
@@ -14,6 +15,13 @@ function App() {
   const [activeModal, setActiveModal] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [activeTab, setActiveTab] = useState("tenant");
+  const [apiStatus, setApiStatus] = useState("checking...");
+
+  useEffect(() => {
+    fetchHealth()
+      .then(() => setApiStatus("API: OK"))
+      .catch(() => setApiStatus("API: FAIL"));
+  }, []);
 
   const openSignIn = () => setActiveModal("signin");
   const openRegister = () => setActiveModal("register");
@@ -46,6 +54,7 @@ function App() {
 
   return (
     <>
+      <p>{apiStatus}</p>
       <div>
         <h1>Apartments for rent</h1>
 
