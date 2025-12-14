@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
+import { authApi } from "./api/auth";
 import { fetchHealth } from "./api/health";
 import "./App.css";
 
 import Button from "./components/Button/Button";
 import Modal from "./components/Modal/Modal";
-import RegisterForm from "./components/RegisterForm/RegisterFrom";
+import RegisterForm from "./components/RegisterForm/RegisterForm";
 import SignInForm from "./components/SignInForm/SignInForm";
 import ListingCard from "./components/ListingCard/ListingCard";
 import ListingForm from "./components/ListingForm/ListingForm";
@@ -16,6 +17,17 @@ function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [activeTab, setActiveTab] = useState("tenant");
   const [apiStatus, setApiStatus] = useState("checking...");
+
+  useEffect(() => {
+    authApi
+      .me()
+      .then((user) => {
+        if (user) setCurrentUser(user);
+      })
+      .catch(() => {
+        // just be silent if isn't logget
+      });
+  }, []);
 
   useEffect(() => {
     fetchHealth()
@@ -38,8 +50,13 @@ function App() {
     closeModal();
   };
 
-  const handleLogout = () => {
-    setCurrentUser(null);
+  const handleLogout = async () => {
+    try {
+      await authApi.logout();
+    } finally {
+      setCurrentUser(null);
+      setActiveTab("tenant");
+    }
   };
 
   const handleListingCreated = () => {

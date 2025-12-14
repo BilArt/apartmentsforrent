@@ -1,6 +1,6 @@
 import { useState } from "react";
 import styles from "./RegisterForm.module.scss";
-import { addUser } from "../../mock/userDb";
+import { authApi } from "../../api/auth";
 
 function RegisterForm({ onRegistered }) {
   const [firstName, setFirstName] = useState("");
@@ -9,7 +9,7 @@ function RegisterForm({ onRegistered }) {
   const [bankId, setBankId] = useState("");
   const [error, setError] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!firstName || !lastName || !phone || !bankId) {
@@ -17,11 +17,19 @@ function RegisterForm({ onRegistered }) {
       return;
     }
 
-    const newUser = addUser({ firstName, lastName, phone, bankId });
+    try {
+      setError(null);
 
-    setError(null);
-    if (onRegistered) {
-      onRegistered(newUser);
+      const user = await authApi.register({
+        firstName,
+        lastName,
+        phone,
+        bankId,
+      });
+
+      onRegistered?.(user);
+    } catch (err) {
+      setError(err.message || "Помилка реєстрації");
     }
   };
 

@@ -1,12 +1,12 @@
 import { useState } from "react";
 import styles from "./SignInForm.module.scss";
-import { findUserByBankId } from "../../mock/userDb";
+import { authApi } from "../../api/auth";
 
 function SignInForm({ onSignedIn }) {
   const [bankId, setBankId] = useState("");
   const [error, setError] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (!bankId) {
@@ -14,16 +14,14 @@ function SignInForm({ onSignedIn }) {
       return;
     }
 
-    const user = findUserByBankId(bankId);
+    try {
+      setError(null);
 
-    if (!user) {
-      setError("Користувач з таким BankID не знайден.");
-      return;
-    }
+      const user = await authApi.login({ bankId });
 
-    setError(null);
-    if (onSignedIn) {
-      onSignedIn(user);
+      onSignedIn?.(user);
+    } catch (err) {
+      setError(err.message || "Користувач з таким BankID не знайден.");
     }
   };
 
@@ -41,7 +39,7 @@ function SignInForm({ onSignedIn }) {
       {error && <p className={styles.error}>{error}</p>}
 
       <button type="submit" className={styles.submit}>
-        Войти
+        Увійти
       </button>
     </form>
   );

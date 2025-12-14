@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "lint": "eslint .",
-    "preview": "vite preview"
+    "dev": "/Users/artembilousov/.nvm/versions/node/v22.12.0/bin/node ../../node_modules/vite/bin/vite.js",
+    "build": "/Users/artembilousov/.nvm/versions/node/v22.12.0/bin/node ../../node_modules/vite/bin/vite.js build",
+    "preview": "/Users/artembilousov/.nvm/versions/node/v22.12.0/bin/node ../../node_modules/vite/bin/vite.js preview",
+    "lint": "eslint ."
   },
   "dependencies": {
     "react": "^19.2.0",
