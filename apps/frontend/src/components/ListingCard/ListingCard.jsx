@@ -6,9 +6,10 @@ function ListingCard({ listing }) {
     city,
     address,
     description,
-    landlordName,
-    landlordRating,
   } = listing;
+
+  const landlordName = listing.landlordName;
+  const landlordRating = listing.landlordRating ?? 0;
 
   return (
     <article className={styles.card}>
@@ -18,17 +19,20 @@ function ListingCard({ listing }) {
 
       <div className={styles.content}>
         <h3 className={styles.title}>{title}</h3>
+
         <p className={styles.location}>
           {city}, {address}
         </p>
+
         <p className={styles.description}>{description}</p>
 
         <div className={styles.footer}>
           <span className={styles.landlord}>
             Орендодавець: {landlordName}
           </span>
+
           <span className={styles.rating}>
-            Рейтинг: {landlordRating.toFixed(1)} ⭐
+            Рейтинг: {landlordRating.toFixed(1)}
           </span>
         </div>
       </div>

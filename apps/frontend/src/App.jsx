@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import "./App.css";
+
 import { authApi } from "./api/auth";
 import { fetchHealth } from "./api/health";
-import "./App.css";
+import { listingsApi } from "./api/listings";
 
 import Button from "./components/Button/Button";
 import Modal from "./components/Modal/Modal";
@@ -10,14 +12,29 @@ import SignInForm from "./components/SignInForm/SignInForm";
 import ListingCard from "./components/ListingCard/ListingCard";
 import ListingForm from "./components/ListingForm/ListingForm";
 
-import { getAllListings, getListingsByLandlordId } from "./mock/listingsDb";
-
 function App() {
   const [activeModal, setActiveModal] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [activeTab, setActiveTab] = useState("tenant");
   const [apiStatus, setApiStatus] = useState("checking...");
 
+  const [allListings, setAllListings] = useState([]);
+  const [myListings, setMyListings] = useState([]);
+  const [listingsError, setListingsError] = useState(null);
+
+  const openSignIn = () => setActiveModal("signin");
+  const openRegister = () => setActiveModal("register");
+  const openAddListing = () => setActiveModal("addListing");
+  const closeModal = () => setActiveModal(null);
+
+  // 1) Checking API health
+  useEffect(() => {
+    fetchHealth()
+      .then(() => setApiStatus("API: OK"))
+      .catch(() => setApiStatus("API: FAIL"));
+  }, []);
+
+  // 2) Session recovery
   useEffect(() => {
     authApi
       .me()
@@ -25,28 +42,41 @@ function App() {
         if (user) setCurrentUser(user);
       })
       .catch(() => {
-        // just be silent if isn't logget
       });
   }, []);
 
   useEffect(() => {
-    fetchHealth()
-      .then(() => setApiStatus("API: OK"))
-      .catch(() => setApiStatus("API: FAIL"));
-  }, []);
+    setListingsError(null);
 
-  const openSignIn = () => setActiveModal("signin");
-  const openRegister = () => setActiveModal("register");
-  const openAddListing = () => setActiveModal("addListing");
-  const closeModal = () => setActiveModal(null);
+    if (activeTab === "tenant") {
+      listingsApi
+        .getAll()
+        .then(setAllListings)
+        .catch((e) => setListingsError(e.message));
+      return;
+    }
+
+    // landlord tab
+    if (!currentUser) {
+      setMyListings([]);
+      return;
+    }
+
+    listingsApi
+      .getMy()
+      .then(setMyListings)
+      .catch((e) => setListingsError(e.message));
+  }, [activeTab, currentUser]);
 
   const handleRegistered = (user) => {
     setCurrentUser(user);
+    setActiveTab("tenant");
     closeModal();
   };
 
   const handleSignedIn = (user) => {
     setCurrentUser(user);
+    setActiveTab("tenant");
     closeModal();
   };
 
@@ -56,22 +86,26 @@ function App() {
     } finally {
       setCurrentUser(null);
       setActiveTab("tenant");
+      closeModal();
     }
   };
 
-  const handleListingCreated = () => {
+  const handleListingCreated = async () => {
     setActiveTab("landlord");
     closeModal();
-  };
 
-  const allListings = getAllListings();
-  const landlordListings = currentUser
-    ? getListingsByLandlordId(currentUser.id)
-    : [];
+    try {
+      const fresh = await listingsApi.getMy();
+      setMyListings(fresh);
+    } catch (e) {
+      setListingsError(e.message);
+    }
+  };
 
   return (
     <>
       <p>{apiStatus}</p>
+
       <div>
         <h1>Apartments for rent</h1>
 
@@ -93,6 +127,7 @@ function App() {
               >
                 Для орендодавців
               </Button>
+
               <Button
                 variant={activeTab === "tenant" ? "primary" : "secondary"}
                 onClick={() => setActiveTab("tenant")}
@@ -108,9 +143,11 @@ function App() {
             )}
 
             <div className="listings">
+              {listingsError && <p>{listingsError}</p>}
+
               {activeTab === "landlord" ? (
-                landlordListings.length ? (
-                  landlordListings.map((listing) => (
+                myListings.length ? (
+                  myListings.map((listing) => (
                     <ListingCard key={listing.id} listing={listing} />
                   ))
                 ) : (
@@ -148,10 +185,7 @@ function App() {
 
       {activeModal === "addListing" && currentUser && (
         <Modal title="Додати оголошення" onClose={closeModal}>
-          <ListingForm
-            currentUser={currentUser}
-            onCreated={handleListingCreated}
-          />
+          <ListingForm onCreated={handleListingCreated} />
         </Modal>
       )}
     </>
