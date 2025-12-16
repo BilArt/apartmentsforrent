@@ -63,8 +63,10 @@ export class ListingsController {
 
   @UseGuards(SessionGuard)
   @Get('my')
-  getMy(@Req() req: Request): ListingWithOwner[] {
-    return this.listings.getByOwner(req.session.userId!).map(enrichListing);
+  my(@Req() req: Request): ListingWithOwner[] {
+    const userId = req.session.userId;
+    if (!userId) return [];
+    return this.listings.getByOwner(userId).map(enrichListing);
   }
 
   @UseGuards(SessionGuard)

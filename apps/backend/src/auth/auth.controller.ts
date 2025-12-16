@@ -11,28 +11,29 @@ export class AuthController {
   @Post('register')
   register(@Body() body: RegisterDto, @Req() req: Request) {
     const user = this.auth.register(body);
-    req.session['userId'] = user.id;
+    req.session.userId = user.id;
     return user;
   }
 
   @Post('login')
-  login(@Body() body: LoginDto, @Req() req: Request) {
-    const user = this.auth.login(body.bankId);
-    req.session['userId'] = user.id;
+  login(@Body() dto: LoginDto, @Req() req: Request) {
+    const user = this.auth.login(dto.bankId);
+    req.session.userId = user.id;
     return user;
   }
 
   @Post('logout')
   logout(@Req() req: Request) {
-    return new Promise((resolve) => {
+    return new Promise<{ ok: true }>((resolve) => {
       req.session.destroy(() => resolve({ ok: true }));
     });
   }
 
   @Get('me')
   me(@Req() req: Request) {
-    const userId = req.session['userId'];
+    const userId = req.session.userId;
     if (!userId) return null;
+    // если у тебя метод называется иначе — см. пункт 2 ниже
     return this.auth.getById(userId) ?? null;
   }
 }
