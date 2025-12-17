@@ -5,34 +5,35 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
-  IsNumber,
   Min,
+  IsNumber,
 } from 'class-validator';
+import { City } from './create-listing.dto';
 
-export enum City {
-  Kyiv = 'Kyiv',
-  Lviv = 'Lviv',
-}
-
-export class CreateListingDto {
+export class UpdateListingDto {
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  title!: string;
+  title?: string;
 
+  @IsOptional()
   @IsEnum(City)
-  city!: City;
+  city?: City;
 
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  address!: string;
+  address?: string;
 
+  @IsOptional()
   @IsString()
   @IsNotEmpty()
-  description!: string;
+  description?: string;
 
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  price!: number;
+  price?: number;
 
   @IsOptional()
   @IsArray()

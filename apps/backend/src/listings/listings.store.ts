@@ -1,6 +1,7 @@
 export type Listing = {
   id: string;
   title: string;
+  price: number;
   city: 'Kyiv' | 'Lviv';
   address: string;
   description: string;
@@ -16,6 +17,7 @@ export const listings: Listing[] = [
     address: 'вул. Дегтярівська, 12',
     description:
       'Світла студія 28 м², 7/16 поверх, тепла взимку. Поруч метро, магазини, парк.',
+    price: 1000,
     images: ['placeholder-1.jpg'],
     ownerId: 'seed-owner-1',
   },
@@ -26,6 +28,7 @@ export const listings: Listing[] = [
     address: 'наб. Дніпровська, 4',
     description:
       'Затишна квартира, панорамні вікна, кондиціонер, робоче місце. Тиха секція.',
+    price: 2000,
     images: ['placeholder-2.jpg'],
     ownerId: 'seed-owner-1',
   },
@@ -36,6 +39,7 @@ export const listings: Listing[] = [
     address: 'просп. Перемоги, 25',
     description:
       '50 м², окрема спальня, кухня-вітальня. Ідеально для пари або 1-2 людей.',
+    price: 1000,
     images: ['placeholder-3.jpg'],
     ownerId: 'seed-owner-2',
   },
@@ -46,6 +50,7 @@ export const listings: Listing[] = [
     address: 'вул. Героїв Сталінграда, 10',
     description:
       'Чисто, тихо, поблизу вода і прогулянкова зона. Багато місць для парковки.',
+    price: 24000,
     images: ['placeholder-4.jpg'],
     ownerId: 'seed-owner-2',
   },
@@ -56,6 +61,7 @@ export const listings: Listing[] = [
     address: 'вул. Саксаганського, 30',
     description:
       'Невелика, але дуже продумана. Кавʼярні, транспорт, центр — все поруч.',
+    price: 1600,
     images: ['placeholder-5.jpg'],
     ownerId: 'seed-owner-3',
   },
@@ -67,6 +73,7 @@ export const listings: Listing[] = [
     address: 'просп. Свободи, 15',
     description:
       'Самий центр. Високі стелі, історичний будинок, акуратний ремонт.',
+    price: 14000,
     images: ['placeholder-6.jpg'],
     ownerId: 'seed-owner-1',
   },
@@ -76,6 +83,7 @@ export const listings: Listing[] = [
     city: 'Lviv',
     address: 'вул. Стрийська, 20',
     description: 'Тиха локація, поруч парк, зручна розвʼязка. Є посудомийка.',
+    price: 13000,
     images: ['placeholder-7.jpg'],
     ownerId: 'seed-owner-2',
   },
@@ -86,6 +94,7 @@ export const listings: Listing[] = [
     address: 'вул. Руська, 8',
     description:
       'Історичний центр, дві ізольовані кімнати, комфортно для двох-трьох людей.',
+    price: 2500,
     images: ['placeholder-8.jpg'],
     ownerId: 'seed-owner-2',
   },
@@ -96,6 +105,7 @@ export const listings: Listing[] = [
     address: 'вул. Замкова, 3',
     description:
       'Класний вид, свіже повітря, спокійний район. Підійде тим, хто любить гуляти.',
+    price: 10000,
     images: ['placeholder-9.jpg'],
     ownerId: 'seed-owner-3',
   },
@@ -106,6 +116,7 @@ export const listings: Listing[] = [
     address: 'вул. Університетська, 11',
     description:
       'Нова техніка, швидкий інтернет, багато світла. Заїжджай і живи.',
+    price: 23000,
     images: ['placeholder-10.jpg'],
     ownerId: 'seed-owner-3',
   },
