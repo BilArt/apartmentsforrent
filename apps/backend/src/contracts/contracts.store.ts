@@ -1,11 +1,13 @@
 export enum ContractStatus {
   DRAFT = 'DRAFT',
+  SIGNED_BY_TENANT = 'SIGNED_BY_TENANT',
   SIGNED = 'SIGNED',
   CANCELLED = 'CANCELLED',
 }
 
 export type Contract = {
   id: string;
+
   requestId: string;
   listingId: string;
 
@@ -13,9 +15,8 @@ export type Contract = {
   tenantId: string;
 
   price: number;
-
-  from?: string;
-  to?: string;
+  from: string;
+  to: string;
 
   status: ContractStatus;
   createdAt: string;
