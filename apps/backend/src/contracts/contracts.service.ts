@@ -51,7 +51,7 @@ export class ContractsService {
     return contract;
   }
 
-  getMy(userId: string) {
+  getMy(userId: string): Contract[] {
     return contracts.filter(
       (c) => c.ownerId === userId || c.tenantId === userId,
     );
@@ -87,10 +87,21 @@ export class ContractsService {
 
     const updated: Contract = { ...current, status: next };
     contracts[idx] = updated;
+
+    if (
+      current.status !== ContractStatus.SIGNED &&
+      next === ContractStatus.SIGNED
+    ) {
+      const rIdx = requests.findIndex((r) => r.id === current.requestId);
+      if (rIdx !== -1) {
+        requests[rIdx] = { ...requests[rIdx], status: RequestStatus.COMPLETED };
+      }
+    }
+
     return updated;
   }
 
-  getById(id: string) {
+  getById(id: string): Contract | undefined {
     return contracts.find((c) => c.id === id);
   }
 }

@@ -3,14 +3,33 @@ import { listings } from '../listings/listings.store';
 import { requests, type BookingRequest, RequestStatus } from './requests.store';
 import type { CreateRequestDto } from './dto/create-request.dto';
 import type { UpdateRequestDto } from './dto/update-request.dto';
+import { contracts, ContractStatus } from '../contracts/contracts.store';
+
+type CreateRequestResult =
+  | BookingRequest
+  | null
+  | 'FORBIDDEN_SELF'
+  | 'DUPLICATE'
+  | 'ALREADY_RENTED';
+
+type UpdateStatusResult = BookingRequest | null | 'FORBIDDEN';
 
 @Injectable()
 export class RequestsService {
-  create(listingId: string, tenantId: string, dto: CreateRequestDto) {
+  create(
+    listingId: string,
+    tenantId: string,
+    dto: CreateRequestDto,
+  ): CreateRequestResult {
     const listing = listings.find((l) => l.id === listingId);
     if (!listing) return null;
 
-    if (listing.ownerId === tenantId) return 'FORBIDDEN_SELF' as const;
+    if (listing.ownerId === tenantId) return 'FORBIDDEN_SELF';
+
+    const hasSignedContract = contracts.some(
+      (c) => c.listingId === listingId && c.status === ContractStatus.SIGNED,
+    );
+    if (hasSignedContract) return 'ALREADY_RENTED';
 
     const exists = requests.find(
       (r) =>
@@ -18,7 +37,7 @@ export class RequestsService {
         r.tenantId === tenantId &&
         r.status === RequestStatus.PENDING,
     );
-    if (exists) return 'DUPLICATE' as const;
+    if (exists) return 'DUPLICATE';
 
     const req: BookingRequest = {
       id: crypto.randomUUID(),
@@ -35,18 +54,22 @@ export class RequestsService {
     return req;
   }
 
-  getMy(tenantId: string) {
+  getMy(tenantId: string): BookingRequest[] {
     return requests.filter((r) => r.tenantId === tenantId);
   }
 
-  getIncoming(ownerId: string) {
+  getIncoming(ownerId: string): BookingRequest[] {
     const myListingIds = new Set(
       listings.filter((l) => l.ownerId === ownerId).map((l) => l.id),
     );
     return requests.filter((r) => myListingIds.has(r.listingId));
   }
 
-  updateStatus(requestId: string, ownerId: string, dto: UpdateRequestDto) {
+  updateStatus(
+    requestId: string,
+    ownerId: string,
+    dto: UpdateRequestDto,
+  ): UpdateStatusResult {
     const idx = requests.findIndex((r) => r.id === requestId);
     if (idx === -1) return null;
 
@@ -54,7 +77,7 @@ export class RequestsService {
     const listing = listings.find((l) => l.id === current.listingId);
     if (!listing) return null;
 
-    if (listing.ownerId !== ownerId) return 'FORBIDDEN' as const;
+    if (listing.ownerId !== ownerId) return 'FORBIDDEN';
 
     const updated: BookingRequest = {
       ...current,
@@ -65,7 +88,7 @@ export class RequestsService {
     return updated;
   }
 
-  getById(id: string) {
+  getById(id: string): BookingRequest | undefined {
     return requests.find((r) => r.id === id);
   }
 }

@@ -54,7 +54,7 @@ export class RequestsController {
     @Param('id') listingId: string,
     @Req() req: Request,
     @Body() dto: CreateRequestDto,
-  ) {
+  ): RequestWithDetails {
     const tenantId = req.session.userId!;
     const res = this.requests.create(listingId, tenantId, dto);
 
@@ -63,6 +63,8 @@ export class RequestsController {
       throw new ForbiddenException('You cannot request your own listing');
     if (res === 'DUPLICATE')
       throw new ForbiddenException('You already have a pending request');
+    if (res === 'ALREADY_RENTED')
+      throw new ForbiddenException('Listing already has a signed contract');
 
     return enrich(res);
   }
@@ -87,7 +89,7 @@ export class RequestsController {
     @Param('id') requestId: string,
     @Req() req: Request,
     @Body() dto: UpdateRequestDto,
-  ) {
+  ): RequestWithDetails {
     const ownerId = req.session.userId!;
     const res = this.requests.updateStatus(requestId, ownerId, dto);
 
