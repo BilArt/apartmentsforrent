@@ -2,10 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { listings, type Listing } from './listings.store';
 import type { CreateListingDto } from './dto/create-listing.dto';
 
+type GetAllFilter = {
+  cityId?: string;
+};
+
 @Injectable()
 export class ListingsService {
-  getAll() {
-    return listings;
+  getAll(filter: GetAllFilter = {}) {
+    const cityId = filter.cityId ? Number(filter.cityId) : null;
+    if (!cityId) return listings;
+
+    return listings.filter((l) => l.city.geonameId === cityId);
   }
 
   getById(id: string) {

@@ -21,12 +21,15 @@ async function request(path, options = {}) {
 }
 
 export const listingsApi = {
-  getAll() {
-    return request("/listings", { method: "GET" });
+  getAll(cityId) {
+    const qs = cityId ? `?cityId=${encodeURIComponent(String(cityId))}` : "";
+    return request(`/listings${qs}`, { method: "GET" });
   },
+
   getMy() {
     return request("/listings/my", { method: "GET" });
   },
+
   create(payload) {
     return request("/listings", {
       method: "POST",

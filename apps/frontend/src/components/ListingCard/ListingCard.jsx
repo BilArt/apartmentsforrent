@@ -1,42 +1,51 @@
-import styles from './ListingCard.module.scss';
+import styles from "./ListingCard.module.scss";
+
+function getCityLabel(city) {
+  // старый формат (строка)
+  if (typeof city === "string") {
+    // можешь оставить просто city
+    // или сделать красивый маппинг:
+    if (city === "Kyiv") return "Київ";
+    if (city === "Lviv") return "Львів";
+    return city;
+  }
+
+  // новый формат (объект)
+  if (city && typeof city === "object") {
+    return city.nameUk || city.name || "—";
+  }
+
+  return "—";
+}
 
 function ListingCard({ listing }) {
-  const {
-    title,
-    city,
-    address,
-    description,
-  } = listing;
-
-  const landlordName = listing.landlordName;
-  const landlordRating = listing.landlordRating ?? 0;
+  const cityLabel = getCityLabel(listing.city);
 
   return (
-    <article className={styles.card}>
-      <div className={styles.photoPlaceholder}>
-        Фото буде пізніше
-      </div>
-
-      <div className={styles.content}>
-        <h3 className={styles.title}>{title}</h3>
-
-        <p className={styles.location}>
-          {city}, {address}
+    <div className={styles.card}>
+      <div className={styles.header}>
+        <h3 className={styles.title}>{listing.title}</h3>
+        <p className={styles.price}>
+          {typeof listing.price === "number" ? `${listing.price} грн` : "—"}
         </p>
-
-        <p className={styles.description}>{description}</p>
-
-        <div className={styles.footer}>
-          <span className={styles.landlord}>
-            Орендодавець: {landlordName}
-          </span>
-
-          <span className={styles.rating}>
-            Рейтинг: {landlordRating.toFixed(1)}
-          </span>
-        </div>
       </div>
-    </article>
+
+      <p className={styles.meta}>
+        <span className={styles.city}>{cityLabel}</span>
+        {listing.address ? <span> • {listing.address}</span> : null}
+      </p>
+
+      {listing.description ? (
+        <p className={styles.desc}>{listing.description}</p>
+      ) : null}
+
+      <p className={styles.landlord}>
+        {listing.landlordName ? listing.landlordName : "Орендодавець"}
+        {typeof listing.landlordRating === "number"
+          ? ` • ⭐ ${listing.landlordRating}`
+          : ""}
+      </p>
+    </div>
   );
 }
 

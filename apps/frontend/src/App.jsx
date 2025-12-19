@@ -41,8 +41,7 @@ function App() {
       .then((user) => {
         if (user) setCurrentUser(user);
       })
-      .catch(() => {
-      });
+      .catch(() => {});
   }, []);
 
   useEffect(() => {

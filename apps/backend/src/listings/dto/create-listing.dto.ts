@@ -1,17 +1,43 @@
 import {
   ArrayMaxSize,
   IsArray,
-  IsEnum,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
-  IsNumber,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
-export enum City {
-  Kyiv = 'Kyiv',
-  Lviv = 'Lviv',
+export class CityDto {
+  @IsNumber()
+  geonameId!: number;
+
+  @IsString()
+  @IsNotEmpty()
+  name!: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  nameUk?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  admin1?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  admin2?: string;
+
+  @IsNumber()
+  lat!: number;
+
+  @IsNumber()
+  lon!: number;
 }
 
 export class CreateListingDto {
@@ -19,8 +45,9 @@ export class CreateListingDto {
   @IsNotEmpty()
   title!: string;
 
-  @IsEnum(City)
-  city!: City;
+  @ValidateNested()
+  @Type(() => CityDto)
+  city!: CityDto;
 
   @IsString()
   @IsNotEmpty()

@@ -115,13 +115,8 @@ async function main() {
 
     const alts = uniqLimit(altsRaw.split(','), 50);
 
-    const nameUk = pickLangName(alts, [
-      /[іїєґ]/i,
-      /^[А-ЯІЇЄҐа-яіїєґ' -]+$/u,
-    ]);
-    const nameRu = pickLangName(alts, [
-      /^[А-Яа-яЁё' -]+$/u,
-    ]);
+    const nameUk = pickLangName(alts, [/[іїєґ]/i, /^[А-ЯІЇЄҐа-яіїєґ' -]+$/u]);
+    const nameRu = pickLangName(alts, [/^[А-Яа-яЁё' -]+$/u]);
 
     result.push({
       id,

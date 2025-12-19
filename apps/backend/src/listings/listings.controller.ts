@@ -9,6 +9,8 @@ import {
   Post,
   Req,
   UseGuards,
+  Query,
+  Delete,
 } from '@nestjs/common';
 import type { Request } from 'express';
 
@@ -18,7 +20,6 @@ import type { Listing } from './listings.store';
 import { ListingsService } from './listings.service';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
-import { Delete } from '@nestjs/common';
 
 type ListingWithOwner = Listing & {
   owner: Pick<User, 'id' | 'firstName' | 'lastName' | 'rating'> | null;
@@ -54,9 +55,11 @@ function enrichListing(listing: Listing): ListingWithOwner {
 export class ListingsController {
   constructor(private readonly listings: ListingsService) {}
 
+  // ✅ теперь поддерживает фильтр:
+  // GET /listings?cityId=703448
   @Get()
-  getAll(): ListingWithOwner[] {
-    return this.listings.getAll().map(enrichListing);
+  getAll(@Query('cityId') cityId?: string): ListingWithOwner[] {
+    return this.listings.getAll({ cityId }).map(enrichListing);
   }
 
   @UseGuards(SessionGuard)
