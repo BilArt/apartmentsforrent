@@ -206,6 +206,14 @@
   color: var(--color-secondary);
 }
 
+/* calendar wrapper so it sits correctly */
+.calendarWrap {
+  position: absolute;
+  top: calc(100% + 14px);
+  left: 0;
+  z-index: 70;
+}
+
 .moreRow {
   margin-top: 18px;
   display: flex;
@@ -348,9 +356,6 @@
   background-color: var(--color-primary);
   color: #fff;
   cursor: pointer;
-  transition:
-    transform 150ms ease,
-    box-shadow 150ms ease;
 
   transition:
     color 200ms ease,

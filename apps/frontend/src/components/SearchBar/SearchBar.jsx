@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./SearchBar.module.scss";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
-import { useNavigate } from "react-router-dom";
+import CalendarDropdown from "../CalendarDropdown/CalendarDropdown";
+import calStyles from "../CalendarDropdown/CalendarDropdown.module.scss";
 
 import SearchIcon from "../../assets/svg/search.svg?react";
 import LocationIcon from "../../assets/svg/location.svg?react";
@@ -20,38 +22,77 @@ const POPULAR = [
   { id: "bukovel", label: "Буковель, Івано-Франківська область" },
 ];
 
-const WHEN_OPTIONS = [
-  { id: "any", label: "Будь-коли" },
-  { id: "today", label: "Сьогодні" },
-  { id: "tomorrow", label: "Завтра" },
-  { id: "week", label: "Цього тижня" },
-];
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
 
-const ROOMS_OPTIONS = [
-  { id: "studio", label: "Студія" },
-  { id: "1", label: "1 кімната" },
-  { id: "2", label: "2 кімнати" },
-  { id: "3", label: "3+ кімнати" },
-];
+function formatISODate(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+
+function formatUaDate(d) {
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
+
+function parseISODate(value) {
+  if (!value || typeof value !== "string") return null;
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]) - 1;
+  const d = Number(m[3]);
+  const dt = new Date(y, mo, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo || dt.getDate() !== d) {
+    return null;
+  }
+  dt.setHours(0, 0, 0, 0);
+  return dt;
+}
+
+function isSameDate(a, b) {
+  if (!a || !b) return false;
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
 
 export default function SearchBar({ variant = "pill" }) {
   const navigate = useNavigate();
+  const [sp] = useSearchParams();
+
   const rootRef = useRef(null);
   const [openId, setOpenId] = useState(null);
 
   const [locationQuery, setLocationQuery] = useState("");
   const [locationValue, setLocationValue] = useState("");
 
-  const [whenValue, setWhenValue] = useState(WHEN_OPTIONS[0]);
-  const [roomsValue, setRoomsValue] = useState(null);
+  const initialFromToday = sp.get("from") === "today";
+  const initialFromDate = parseISODate(sp.get("fromDate") || "");
+  const [fromToday, setFromToday] = useState(initialFromToday);
+  const [selectedDate, setSelectedDate] = useState(
+    initialFromToday ? null : initialFromDate
+  );
+
+  const [roomsCount, setRoomsCount] = useState(Number(sp.get("rooms") || 0));
+  const [kitchen, setKitchen] = useState(sp.get("kitchen") === "1");
 
   useEffect(() => {
     const onDown = (e) => {
       if (!rootRef.current) return;
       if (!rootRef.current.contains(e.target)) setOpenId(null);
     };
+    const onKey = (e) => {
+      if (e.key === "Escape") setOpenId(null);
+    };
+
     document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
   }, []);
 
   const filteredLocations = useMemo(() => {
@@ -73,13 +114,60 @@ export default function SearchBar({ variant = "pill" }) {
     setOpenId(null);
   };
 
+  const whenLabel = useMemo(() => {
+    if (fromToday) return "Від сьогодні";
+    if (selectedDate) return formatUaDate(selectedDate);
+    return "Від коли";
+  }, [fromToday, selectedDate]);
+
+  const roomsLabel = useMemo(() => {
+    if (!roomsCount) return "Кількість кімнат";
+    return `Кількість кімнат: ${roomsCount}`;
+  }, [roomsCount]);
+
+  const decRooms = () => setRoomsCount((v) => Math.max(0, v - 1));
+  const incRooms = () => setRoomsCount((v) => Math.min(10, v + 1));
+
+  const onPickToday = () => {
+    setFromToday(true);
+    setSelectedDate(null);
+    setOpenId(null);
+  };
+
+  const onPickDate = (d) => {
+    if (!d) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const picked = new Date(d);
+    picked.setHours(0, 0, 0, 0);
+
+    if (isSameDate(today, picked)) {
+      setFromToday(true);
+      setSelectedDate(null);
+    } else {
+      setFromToday(false);
+      setSelectedDate(picked);
+    }
+
+    setOpenId(null);
+  };
+
   const onSearch = () => {
     const city = (locationValue || locationQuery || "").trim();
 
     const params = new URLSearchParams();
     if (city) params.set("city", city);
-    if (whenValue?.id) params.set("when", whenValue.id);
-    if (roomsValue?.id) params.set("rooms", roomsValue.id);
+
+    if (fromToday) {
+      params.set("from", "today");
+    } else if (selectedDate) {
+      params.set("fromDate", formatISODate(selectedDate));
+    }
+
+    if (roomsCount > 0) params.set("rooms", String(roomsCount));
+    if (kitchen) params.set("kitchen", "1");
 
     navigate(`/listings?${params.toString()}`);
     setOpenId(null);
@@ -130,7 +218,6 @@ export default function SearchBar({ variant = "pill" }) {
                           <span className={styles.icon}>
                             <TimerIcon />
                           </span>
-
                           <span className={styles.itemText}>{item.label}</span>
                         </button>
                       </li>
@@ -156,7 +243,6 @@ export default function SearchBar({ variant = "pill" }) {
                         <span className={styles.icon}>
                           <LocationSmallIcon />
                         </span>
-
                         <span className={styles.itemText}>{item.label}</span>
                       </button>
                     </li>
@@ -169,7 +255,7 @@ export default function SearchBar({ variant = "pill" }) {
 
         <div className={styles.divider} />
 
-        {/* 2) Від коли */}
+        {/* 2) Від коли — календарь через CalendarDropdown */}
         <div className={styles.field}>
           <button
             type="button"
@@ -177,35 +263,29 @@ export default function SearchBar({ variant = "pill" }) {
             onClick={() => toggle("when")}
             aria-expanded={openId === "when"}
           >
-            <span className={styles.valueText}>{whenValue.label}</span>
-            <span className={styles.chevron} />
+            <span className={styles.valueText}>{whenLabel}</span>
+            <span
+              className={`${styles.chevron} ${
+                openId === "when" ? styles.chevUp : styles.chevDown
+              }`}
+            />
           </button>
 
           {openId === "when" && (
-            <div className={styles.dropdownSmall}>
-              <ul className={styles.list}>
-                {WHEN_OPTIONS.map((opt) => (
-                  <li key={opt.id}>
-                    <button
-                      type="button"
-                      className={styles.item}
-                      onClick={() => {
-                        setWhenValue(opt);
-                        setOpenId(null);
-                      }}
-                    >
-                      <span className={styles.itemText}>{opt.label}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+            <div className={styles.calendarWrap}>
+              <CalendarDropdown
+                value={fromToday ? new Date() : selectedDate}
+                onChange={(d) => onPickDate(d)}
+                classNames={calStyles}
+                onClose={() => setOpenId(null)}
+              />
             </div>
           )}
         </div>
 
         <div className={styles.divider} />
 
-        {/* 3) Кількість кімнат */}
+        {/* 3) Кількість кімнат — панелька */}
         <div className={styles.field}>
           <button
             type="button"
@@ -213,30 +293,55 @@ export default function SearchBar({ variant = "pill" }) {
             onClick={() => toggle("rooms")}
             aria-expanded={openId === "rooms"}
           >
-            <span className={styles.valueText}>
-              {roomsValue?.label ?? "Кількість кімнат"}
-            </span>
-            <span className={styles.chevron} />
+            <span className={styles.valueText}>{roomsLabel}</span>
+            <span
+              className={`${styles.chevron} ${
+                openId === "rooms" ? styles.chevUp : styles.chevDown
+              }`}
+            />
           </button>
 
           {openId === "rooms" && (
-            <div className={styles.dropdownSmall}>
-              <ul className={styles.list}>
-                {ROOMS_OPTIONS.map((opt) => (
-                  <li key={opt.id}>
-                    <button
-                      type="button"
-                      className={styles.item}
-                      onClick={() => {
-                        setRoomsValue(opt);
-                        setOpenId(null);
-                      }}
-                    >
-                      <span className={styles.itemText}>{opt.label}</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
+            <div className={`${styles.dropdownRooms} ${styles.popAnim}`}>
+              <div className={styles.roomsRow}>
+                <div className={styles.roomsTitle}>Кількість кімнат</div>
+
+                <div className={styles.counter}>
+                  <button
+                    type="button"
+                    className={styles.counterBtn}
+                    onClick={decRooms}
+                    aria-label="Decrease rooms"
+                  >
+                    –
+                  </button>
+                  <div className={styles.counterValue}>{roomsCount}</div>
+                  <button
+                    type="button"
+                    className={styles.counterBtn}
+                    onClick={incRooms}
+                    aria-label="Increase rooms"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.roomsDivider} />
+
+              <div className={styles.toggleRow}>
+                <div className={styles.toggleLabel}>Окрема кухня</div>
+                <button
+                  type="button"
+                  className={`${styles.toggle} ${
+                    kitchen ? styles.toggleOn : ""
+                  }`}
+                  onClick={() => setKitchen((v) => !v)}
+                  aria-pressed={kitchen}
+                >
+                  <span className={styles.knob} />
+                </button>
+              </div>
             </div>
           )}
         </div>

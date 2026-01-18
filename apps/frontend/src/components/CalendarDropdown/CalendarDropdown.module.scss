@@ -1,0 +1,111 @@
+.dropdownCalendar {
+  width: 320px;
+  background: #fff;
+  border-radius: 20px;
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.16);
+  padding: 14px;
+}
+
+.todayPill {
+  border-radius: 50px;
+  border: 1px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.todayPillActive {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.calHeader {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.calTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.6);
+}
+
+.calNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.navBtn {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.45);
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+}
+
+.weekdays {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.weekday {
+  text-align: center;
+  font-weight: 700;
+  color: rgba(0, 0, 0, 0.75);
+  font-size: 13px;
+}
+
+.daysGrid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+
+.dayEmpty {
+  height: 30px;
+}
+
+.dayBtn {
+  height: 30px;
+  border-radius: 50px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 13px;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: default;
+  }
+}
+
+.daySelected {
+  background: var(--color-primary);
+  color: #fff;
+
+  &:hover {
+    background: var(--color-primary);
+  }
+}

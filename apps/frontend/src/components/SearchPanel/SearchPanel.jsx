@@ -2,6 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import styles from "./SearchPanel.module.scss";
 
+import CalendarDropdown from "../CalendarDropdown/CalendarDropdown";
+import calStyles from "../CalendarDropdown/CalendarDropdown.module.scss";
+
 import CalendarIcon from "../../assets/svg/calendar.svg?react";
 import ChevronDownIcon from "../../assets/svg/raw.svg?react";
 import ClearIcon from "../../assets/svg/clear.svg?react";
@@ -25,19 +28,45 @@ const RENT_TYPES = [
   { id: "short", label: "Подобово" },
 ];
 
-const WHEN = [
-  { id: "any", label: "Обрати дату" },
-  { id: "today", label: "Сьогодні" },
-  { id: "tomorrow", label: "Завтра" },
-  { id: "week", label: "Цього тижня" },
-];
+function pad2(n) {
+  return String(n).padStart(2, "0");
+}
+function formatISODate(d) {
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function formatUaDate(d) {
+  return `${pad2(d.getDate())}.${pad2(d.getMonth() + 1)}.${d.getFullYear()}`;
+}
+function startOfDay(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+function sameDay(a, b) {
+  if (!a || !b) return false;
+  return (
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate()
+  );
+}
+function parseISODate(s) {
+  // YYYY-MM-DD
+  if (!s) return null;
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return null;
+  const y = Number(m[1]);
+  const mo = Number(m[2]) - 1;
+  const da = Number(m[3]);
+  const d = new Date(y, mo, da);
+  return startOfDay(d);
+}
 
 export default function SearchPanel() {
   const navigate = useNavigate();
   const [sp] = useSearchParams();
 
   const [openId, setOpenId] = useState(null);
-
   const dropdownRefs = useRef(new Map());
 
   const registerDropdownRef = (id) => (node) => {
@@ -77,10 +106,20 @@ export default function SearchPanel() {
     const getBool = (k) => sp.get(k) === "1";
     const toStr = (v) => String(v ?? "");
 
+    // новый формат:
+    // from=today OR fromDate=YYYY-MM-DD
+    const from = sp.get("from");
+    const fromDate = parseISODate(sp.get("fromDate"));
+    const today = startOfDay(new Date());
+
+    let whenDate = null;
+    if (from === "today") whenDate = today;
+    else if (fromDate) whenDate = fromDate;
+
     return {
       city: toStr(sp.get("city") || ""),
       district: toStr(sp.get("district") || ""),
-      when: toStr(sp.get("when") || "any"),
+      whenDate,
       buildingType: toStr(sp.get("buildingType") || ""),
       rentType: toStr(sp.get("rentType") || ""),
 
@@ -104,7 +143,7 @@ export default function SearchPanel() {
 
   const [city, setCity] = useState(initial.city);
   const [district, setDistrict] = useState(initial.district);
-  const [when, setWhen] = useState(initial.when);
+  const [whenDate, setWhenDate] = useState(initial.whenDate); // Date | null
   const [buildingType, setBuildingType] = useState(initial.buildingType);
   const [rentType, setRentType] = useState(initial.rentType);
 
@@ -124,6 +163,13 @@ export default function SearchPanel() {
   const [balcony, setBalcony] = useState(initial.balcony);
   const [storage, setStorage] = useState(initial.storage);
 
+  const today = useMemo(() => startOfDay(new Date()), []);
+  const whenLabel = useMemo(() => {
+    if (!whenDate) return "Обрати дату";
+    if (sameDay(whenDate, today)) return "Від сьогодні";
+    return formatUaDate(whenDate);
+  }, [whenDate, today]);
+
   const apply = () => {
     const p = new URLSearchParams();
 
@@ -134,7 +180,15 @@ export default function SearchPanel() {
 
     setIf("city", city);
     setIf("district", district);
-    if (when && when !== "any") p.set("when", when);
+
+    if (whenDate) {
+      if (sameDay(whenDate, today)) {
+        p.set("from", "today");
+      } else {
+        p.set("fromDate", formatISODate(whenDate));
+      }
+    }
+
     setIf("buildingType", buildingType);
     setIf("rentType", rentType);
 
@@ -163,7 +217,7 @@ export default function SearchPanel() {
   const clear = () => {
     setCity("");
     setDistrict("");
-    setWhen("any");
+    setWhenDate(null);
     setBuildingType("");
     setRentType("");
 
@@ -231,18 +285,35 @@ export default function SearchPanel() {
           registerRef={registerDropdownRef}
         />
 
-        {/* Доступно від */}
-        <DropdownField
-          label="Доступно від"
-          id="when"
-          openId={openId}
-          toggle={toggle}
-          value={when}
-          options={WHEN}
-          onPick={setWhen}
-          icon={<CalendarIcon />}
-          registerRef={registerDropdownRef}
-        />
+        {/* Доступно від — календарь */}
+        <div className={styles.field}>
+          <label className={styles.label}>Доступно від</label>
+
+          <div className={styles.selectBox} ref={registerDropdownRef("when")}>
+            <button
+              type="button"
+              className={styles.selectBtn}
+              onClick={() => toggle("when")}
+              aria-expanded={openId === "when"}
+            >
+              <span className={styles.selectValue}>{whenLabel}</span>
+              <span className={styles.selectIcon} aria-hidden="true">
+                <CalendarIcon />
+              </span>
+            </button>
+
+            {openId === "when" && (
+              <div className={styles.calendarWrap}>
+                <CalendarDropdown
+                  value={whenDate}
+                  onChange={(d) => setWhenDate(d)}
+                  classNames={calStyles}
+                  onClose={() => setOpenId(null)}
+                />
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Тип будови */}
         <DropdownField
