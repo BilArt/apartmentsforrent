@@ -1,0 +1,370 @@
+.card {
+  background: #fff;
+  border-radius: 28px;
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+  padding: 28px 32px;
+}
+
+.title {
+  margin: 0 0 20px;
+  font-size: 40px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px 26px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.label {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* city input */
+.control {
+  position: relative;
+  height: 44px;
+
+  input {
+    width: 100%;
+    height: 44px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    padding: 0 56px 0 16px;
+    outline: none;
+    background: #fff;
+  }
+}
+
+.clearBtn {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  z-index: 2;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+  }
+}
+
+/* ranges */
+.range {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  input {
+    width: 100%;
+    height: 44px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    padding: 0 16px;
+    outline: none;
+    background: #fff;
+  }
+}
+
+.dash {
+  opacity: 0.6;
+}
+
+/* rooms */
+.rooms {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.roundBtn {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  background: #fff;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.03);
+  }
+}
+
+.roomsValue {
+  min-width: 18px;
+  text-align: center;
+  font-weight: 600;
+}
+
+/* === кастомные селекты (как в SearchBar) === */
+.selectBox {
+  position: relative;
+}
+
+.selectBtn {
+  width: 100%;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  padding: 0 52px 0 16px;
+  background: #fff;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+}
+
+.selectValue {
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-secondary);
+  font-size: 16px;
+}
+
+/* иконка справа (стрелка / календарь) */
+.selectIcon {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+  }
+}
+
+/* dropdown как в pill */
+.dropdownSmall {
+  position: absolute;
+  top: calc(100% + 14px);
+  left: 0;
+
+  width: 260px;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+  padding: 16px;
+  z-index: 50;
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.item {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 10px 8px;
+  border-radius: 12px;
+
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  cursor: pointer;
+  color: var(--color-secondary);
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.04);
+  }
+}
+
+.itemText {
+  font-size: 13px;
+  color: var(--color-secondary);
+}
+
+/* link row above collapsible */
+.moreRow {
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.moreLink {
+  border: 0;
+  background: transparent;
+  color: var(--color-primary);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.chevDown,
+.chevUp {
+  width: 10px;
+  height: 10px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+}
+
+.chevDown {
+  transform: rotate(45deg);
+}
+
+.chevUp {
+  transform: rotate(-135deg);
+}
+
+/* collapsible animation */
+.moreCollapsible {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 260ms ease;
+}
+
+.moreOpen {
+  grid-template-rows: 1fr;
+}
+
+.moreInner {
+  overflow: hidden;
+}
+
+.toggles {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 22px 26px;
+  padding-top: 20px;
+
+  opacity: 0;
+  transform: translateY(-6px);
+  transition:
+    opacity 200ms ease,
+    transform 200ms ease;
+}
+
+.moreOpen .toggles {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* toggles */
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.toggleLabel {
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.toggle {
+  width: 56px;
+  height: 30px;
+  border-radius: 999px;
+  border: 0;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.2);
+  position: relative;
+  transition: background 200ms ease;
+}
+
+.toggleOn {
+  background: #ff5a5f;
+}
+
+.knob {
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  background: #fff;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform 200ms ease;
+}
+
+.toggleOn .knob {
+  transform: translateX(26px);
+}
+
+/* bottom actions always below collapsible */
+.bottomRow {
+  margin-top: 22px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.clearFilters {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.55);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
+  &:hover {
+    color: rgba(0, 0, 0, 0.8);
+  }
+}
+
+.searchBtn {
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 999px;
+  border: 0;
+  background-color: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+  transition:
+    transform 150ms ease,
+    box-shadow 150ms ease;
+
+  transition:
+    color 200ms ease,
+    background-color 200ms ease;
+
+  &:hover {
+    background-color: #ff7377;
+  }
+}

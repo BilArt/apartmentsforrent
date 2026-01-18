@@ -1,22 +1,22 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
+import { Routes, Route } from "react-router-dom";
+
 import { authApi } from "./api/auth";
 import { fetchHealth } from "./api/health";
 import { listingsApi } from "./api/listings";
 
+import HomePage from "./pages/HomePage/HomePage";
+import ListingsPage from "./pages/ListingsPage/ListingsPage";
+
 import Header from "./components/Header/Header";
-import Hero from "./components/Hero/Hero";
-import Benefits from "./components/Benefits/Benefits";
-import HowItWorks from "./components/HowItWorks/HowItWorks";
 import Footer from "./components/Footer/Footer";
 
 import BankIdModal from "./components/BankIdModal/BankIdModal";
-import Button from "./components/Button/Button";
 import Modal from "./components/Modal/Modal";
 import RegisterForm from "./components/RegisterForm/RegisterForm";
 import SignInForm from "./components/SignInForm/SignInForm";
-import ListingCard from "./components/ListingCard/ListingCard";
 import ListingForm from "./components/ListingForm/ListingForm";
 
 function App() {
@@ -28,21 +28,19 @@ function App() {
   const [allListings, setAllListings] = useState([]);
   const [myListings, setMyListings] = useState([]);
   const [listingsError, setListingsError] = useState(null);
-  const [bankIdMode, setBankIdMode] = useState(null); // "signin" | "register" | null
+  const [bankIdMode, setBankIdMode] = useState(null);
 
   const openSignIn = () => setActiveModal("signin");
   const openRegister = () => setActiveModal("register");
   const openAddListing = () => setActiveModal("addListing");
   const closeModal = () => setActiveModal(null);
 
-  // 1) Checking API health
   useEffect(() => {
     fetchHealth()
       .then(() => setApiStatus("API: OK"))
       .catch(() => setApiStatus("API: FAIL"));
   }, []);
 
-  // 2) Session recovery
   useEffect(() => {
     authApi
       .me()
@@ -63,7 +61,6 @@ function App() {
       return;
     }
 
-    // landlord tab
     if (!currentUser) {
       setMyListings([]);
       return;
@@ -137,9 +134,11 @@ function App() {
         onLogout={handleLogout}
       />
 
-      <Hero />
-      <Benefits />
-      <HowItWorks />
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/listings" element={<ListingsPage />} />
+      </Routes>
+
       <Footer />
 
       {activeModal === "signin" && (

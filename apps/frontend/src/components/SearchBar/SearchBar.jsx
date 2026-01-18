@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./SearchBar.module.scss";
 
+import { useNavigate } from "react-router-dom";
+
 import SearchIcon from "../../assets/svg/search.svg?react";
 import LocationIcon from "../../assets/svg/location.svg?react";
 import TimerIcon from "../../assets/svg/timer.svg?react";
@@ -32,7 +34,8 @@ const ROOMS_OPTIONS = [
   { id: "3", label: "3+ кімнати" },
 ];
 
-export default function SearchBar() {
+export default function SearchBar({ variant = "pill" }) {
+  const navigate = useNavigate();
   const rootRef = useRef(null);
   const [openId, setOpenId] = useState(null);
 
@@ -71,12 +74,15 @@ export default function SearchBar() {
   };
 
   const onSearch = () => {
-    const payload = {
-      location: locationValue || locationQuery,
-      when: whenValue?.id,
-      rooms: roomsValue?.id ?? null,
-    };
-    console.log("SEARCH:", payload);
+    const city = (locationValue || locationQuery || "").trim();
+
+    const params = new URLSearchParams();
+    if (city) params.set("city", city);
+    if (whenValue?.id) params.set("when", whenValue.id);
+    if (roomsValue?.id) params.set("rooms", roomsValue.id);
+
+    navigate(`/listings?${params.toString()}`);
+    setOpenId(null);
   };
 
   return (
