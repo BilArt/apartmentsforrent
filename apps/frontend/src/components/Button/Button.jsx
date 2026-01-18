@@ -1,13 +1,24 @@
-import styles from './Button.module.scss'
+import styles from "./Button.module.scss";
 
-function Button({ children, variant = 'primary', ...rest}) {
-    const classNames = [styles.button, styles[variant]].join(' ')
+function Button({
+  children,
+  variant = "primary",
+  leftIcon: LeftIcon,
+  rightIcon: RightIcon,
+  className = "",
+  ...rest
+}) {
+  const classes = [styles.button, styles[variant], className]
+    .filter(Boolean)
+    .join(" ");
 
-    return (
-        <button className={classNames} {...rest}>
-            {children}
-        </button>
-    )
+  return (
+    <button className={classes} {...rest}>
+      {LeftIcon && <LeftIcon className={styles.icon} aria-hidden="true" />}
+      <span className={styles.label}>{children}</span>
+      {RightIcon && <RightIcon className={styles.icon} aria-hidden="true" />}
+    </button>
+  );
 }
 
-export default Button
+export default Button;

@@ -1,0 +1,68 @@
+.hero {
+  position: relative;
+  text-align: center;
+
+  min-height: 760px;
+  padding-top: 200px;
+  padding-bottom: 0;
+
+  background-image: url("../../assets/images/building.jpg");
+  background-repeat: no-repeat;
+  background-position: right center;
+  background-size: auto 100%;
+}
+
+.hero::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  background: linear-gradient(
+    to bottom,
+    #fff 0%,
+    rgba(255, 255, 255, 0.95) 30%,
+    rgba(255, 255, 255, 0.7) 50%,
+    rgba(255, 255, 255, 0) 75%
+  );
+
+  pointer-events: none;
+  z-index: 1;
+}
+
+.inner {
+  position: relative;
+  z-index: 2;
+  margin: 0 auto;
+}
+
+.title {
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-weight: 700;
+  font-size: 48px;
+  color: var(--color-primary);
+  margin: 0;
+}
+
+.subtitle {
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-weight: 400;
+  font-size: 30px;
+  color: var(--color-secondary);
+  margin: 0;
+}
+
+.accent {
+  color: var(--color-text-primary);
+}
+
+.searchWrapper {
+  margin-top: 100px;
+}

@@ -1,9 +1,7 @@
-$font-family-main:
-  system-ui,
-  -apple-system,
-  BlinkMacSystemFont,
-  "Segoe UI",
-  sans-serif;
-$bg-color: #0f172a;
-$text-color: #e5e7eb;
-$accent-color: #22c55e;
+:root {
+  --color-primary: #FF4E66;
+  --color-secondary: #8F8F8F;
+  --color-text-primary: #424242;
+  --color-text-secondary: #9D9D9D;
+  --color-white: #FFFFFF;
+}

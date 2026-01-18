@@ -2,9 +2,12 @@
 @use "./reset";
 
 body {
-  font-family: $font-family-main;
-  background-color: $bg-color;
-  color: $text-color;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background-color: white;
 }
 
 #root {

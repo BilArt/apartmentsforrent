@@ -1,0 +1,103 @@
+.section {
+  padding: 90px 0;
+  background: #fff;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 60px;
+  align-items: center;
+}
+
+.title {
+  margin: 0 0 18px;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 36px;
+  line-height: 1.15;
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.brand {
+  color: var(--color-primary);
+}
+
+.text {
+  margin: 0;
+  max-width: 588px;
+  width: 100%;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--color-secondary);
+}
+
+.cards {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 34px 44px;
+}
+
+.card {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 10px;
+}
+
+.iconCircle {
+  width: 56px;
+  height: 56px;
+  border-radius: 40px;
+  background: var(--color-primary);
+  display: grid;
+  place-items: center;
+}
+
+.icon {
+  width: 35px;
+  height: 35px;
+  color: #fff;
+  scale: 0.8;
+}
+
+.cardText {
+  margin: 0;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1.4;
+  color: var(--color-text-primary);
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .cards {
+    gap: 22px 22px;
+  }
+
+  .text {
+    max-width: none;
+  }
+}

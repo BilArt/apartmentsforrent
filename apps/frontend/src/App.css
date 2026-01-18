@@ -1,7 +1,12 @@
 #root {
-  max-width: 960px;
+  width: 100%;
   margin: 0 auto;
-  padding: 2rem;
+}
+
+.container {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 20px;
 }
 
 .flex {
@@ -9,24 +14,4 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-}
-
-.tabs {
-  margin-top: 24px;
-  margin-bottom: 16px;
-  display: flex;
-  gap: 12px;
-  justify-content: center;
-}
-
-.listings {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.actions {
-  margin-bottom: 16px;
-  display: flex;
-  justify-content: center;
 }

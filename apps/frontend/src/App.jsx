@@ -5,6 +5,12 @@ import { authApi } from "./api/auth";
 import { fetchHealth } from "./api/health";
 import { listingsApi } from "./api/listings";
 
+import Header from "./components/Header/Header";
+import Hero from "./components/Hero/Hero";
+import Benefits from "./components/Benefits/Benefits";
+import HowItWorks from "./components/HowItWorks/HowItWorks";
+import Footer from "./components/Footer/Footer";
+
 import Button from "./components/Button/Button";
 import Modal from "./components/Modal/Modal";
 import RegisterForm from "./components/RegisterForm/RegisterForm";
@@ -103,85 +109,27 @@ function App() {
 
   return (
     <>
-      <p>{apiStatus}</p>
-
-      <div>
-        <h1>Apartments for rent</h1>
-
-        {currentUser ? (
-          <>
-            <p>
-              Добрий день, {currentUser.firstName}! Ваш рейтинг:{" "}
-              {currentUser.rating}
-            </p>
-
-            <div className="flex">
-              <Button onClick={handleLogout}>Log out</Button>
-            </div>
-
-            <div className="tabs">
-              <Button
-                variant={activeTab === "landlord" ? "primary" : "secondary"}
-                onClick={() => setActiveTab("landlord")}
-              >
-                Для орендодавців
-              </Button>
-
-              <Button
-                variant={activeTab === "tenant" ? "primary" : "secondary"}
-                onClick={() => setActiveTab("tenant")}
-              >
-                Для орендаторів
-              </Button>
-            </div>
-
-            {activeTab === "landlord" && (
-              <div className="actions">
-                <Button onClick={openAddListing}>Додати оголошення</Button>
-              </div>
-            )}
-
-            <div className="listings">
-              {listingsError && <p>{listingsError}</p>}
-
-              {activeTab === "landlord" ? (
-                myListings.length ? (
-                  myListings.map((listing) => (
-                    <ListingCard key={listing.id} listing={listing} />
-                  ))
-                ) : (
-                  <p>Наразі у Вас немає оголошень.</p>
-                )
-              ) : (
-                allListings.map((listing) => (
-                  <ListingCard key={listing.id} listing={listing} />
-                ))
-              )}
-            </div>
-          </>
-        ) : (
-          <>
-            <p>Увійдіть або зареєструйтеся.</p>
-            <div className="flex">
-              <Button onClick={openSignIn}>Увійти</Button>
-              <Button onClick={openRegister}>Зареєструватися</Button>
-            </div>
-          </>
-        )}
-      </div>
-
+      <Header
+        isAuthed={Boolean(currentUser)}
+        onAddListing={openAddListing}
+        onSignIn={openSignIn}
+        onLogout={handleLogout}
+      />
+      <Hero />
+      <Benefits />
+      <HowItWorks />
+      <Footer />
+    
       {activeModal === "signin" && (
         <Modal title="Sign In with BankID mock" onClose={closeModal}>
           <SignInForm onSignedIn={handleSignedIn} />
         </Modal>
       )}
-
       {activeModal === "register" && (
         <Modal title="Register new user" onClose={closeModal}>
           <RegisterForm onRegistered={handleRegistered} />
         </Modal>
       )}
-
       {activeModal === "addListing" && currentUser && (
         <Modal title="Додати оголошення" onClose={closeModal}>
           <ListingForm onCreated={handleListingCreated} />

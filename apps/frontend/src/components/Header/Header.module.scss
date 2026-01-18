@@ -1,0 +1,78 @@
+.header {
+  padding: 45px 0 0 0;
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  text-decoration: none;
+  color: var(--color-text-primary);
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+
+  .logoAccent {
+    color: var(--color-primary);
+  }
+}
+
+.navigation {
+  display: flex;
+  gap: 20px;
+}
+
+.Login {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.linkBtn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  transition:
+    color 200ms ease,
+    border-color 200ms ease,
+    background-color 200ms ease;
+
+  svg {
+    display: block;
+    width: 18px;
+    height: 18px;
+
+    color: currentColor;
+    stroke: currentColor;
+
+    transition:
+      color 200ms ease,
+      stroke 200ms ease;
+  }
+
+  &:hover {
+    color: var(--color-text-primary);
+    border-color: var(--color-text-primary);
+  }
+}
+
+.primaryBtn {
+  &:hover {
+    border-color: transparent;
+    background-color: #ff7377;
+    color: white;
+  }
+
+  &:hover svg {
+    color: inherit;
+    stroke: inherit;
+  }
+}
