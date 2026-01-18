@@ -38,7 +38,6 @@ export default function SearchPanel() {
 
   const [openId, setOpenId] = useState(null);
 
-  // refs на каждый dropdown container (selectBox)
   const dropdownRefs = useRef(new Map());
 
   const registerDropdownRef = (id) => (node) => {
@@ -47,7 +46,6 @@ export default function SearchPanel() {
     else dropdownRefs.current.delete(id);
   };
 
-  // close dropdown on outside click
   useEffect(() => {
     const onDown = (e) => {
       if (!openId) return;
@@ -65,7 +63,6 @@ export default function SearchPanel() {
     return () => document.removeEventListener("mousedown", onDown);
   }, [openId]);
 
-  // close dropdown on ESC
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === "Escape") setOpenId(null);
@@ -336,7 +333,6 @@ export default function SearchPanel() {
         </div>
       </div>
 
-      {/* кнопка "Більше фільтрів" — над раскрывающейся частью */}
       <div className={styles.moreRow}>
         <button
           type="button"
@@ -348,7 +344,6 @@ export default function SearchPanel() {
         </button>
       </div>
 
-      {/* раскрывающаяся часть */}
       <div
         className={`${styles.moreCollapsible} ${moreOpen ? styles.moreOpen : ""}`}
       >
@@ -381,7 +376,6 @@ export default function SearchPanel() {
         </div>
       </div>
 
-      {/* нижняя панель с кнопками — всегда после раскрывающейся части */}
       <div className={styles.bottomRow}>
         <div className={styles.actions}>
           <button type="button" className={styles.clearFilters} onClick={clear}>

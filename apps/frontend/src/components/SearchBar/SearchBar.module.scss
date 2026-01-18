@@ -196,12 +196,20 @@
   border: 0;
   cursor: pointer;
 
-  background: #ff5a5f;
-  box-shadow: 0 10px 20px rgba(255, 90, 95, 0.35);
+  background-color: var(--color-primary);
 
   display: flex;
   align-items: center;
   justify-content: center;
+
+  transition:
+    color 200ms ease,
+    border-color 200ms ease,
+    background-color 200ms ease;
+
+  &:hover {
+    background-color: #ff7377;
+  }
 }
 
 .searchIcon {

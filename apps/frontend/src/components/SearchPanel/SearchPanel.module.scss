@@ -29,7 +29,6 @@
   color: var(--color-text-primary);
 }
 
-/* city input */
 .control {
   position: relative;
   height: 44px;
@@ -117,7 +116,6 @@
   font-weight: 600;
 }
 
-/* === кастомные селекты (как в SearchBar) === */
 .selectBox {
   position: relative;
 }
@@ -145,7 +143,6 @@
   font-size: 16px;
 }
 
-/* иконка справа (стрелка / календарь) */
 .selectIcon {
   position: absolute;
   right: 18px;
@@ -166,7 +163,6 @@
   }
 }
 
-/* dropdown как в pill */
 .dropdownSmall {
   position: absolute;
   top: calc(100% + 14px);
@@ -210,7 +206,6 @@
   color: var(--color-secondary);
 }
 
-/* link row above collapsible */
 .moreRow {
   margin-top: 18px;
   display: flex;
@@ -245,7 +240,6 @@
   transform: rotate(-135deg);
 }
 
-/* collapsible animation */
 .moreCollapsible {
   display: grid;
   grid-template-rows: 0fr;
@@ -278,7 +272,6 @@
   transform: translateY(0);
 }
 
-/* toggles */
 .toggleRow {
   display: flex;
   align-items: center;
@@ -321,7 +314,6 @@
   transform: translateX(26px);
 }
 
-/* bottom actions always below collapsible */
 .bottomRow {
   margin-top: 22px;
   display: flex;

@@ -1,0 +1,46 @@
+.page {
+  padding: 28px 0 80px;
+}
+
+.top {
+  margin-bottom: 26px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 24px;
+}
+
+.pagination {
+  margin-top: 26px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+}
+
+.pageBtn,
+.pageBtnActive {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  border: 0;
+  cursor: pointer;
+  background: transparent;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.pageBtn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.pageBtnActive {
+  background: var(--color-primary);
+  color: #fff;
+  cursor: default;
+}
+
+.dots {
+  color: rgba(0, 0, 0, 0.35);
+}
