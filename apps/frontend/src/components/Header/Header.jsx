@@ -1,3 +1,5 @@
+import { Link } from "react-router-dom";
+
 import Button from "../Button/Button.jsx";
 import styles from "./Header.module.scss";
 
@@ -16,9 +18,9 @@ export default function Header({
     <header className={styles.header}>
       <div className="container">
         <div className={styles.inner}>
-          <a href="/" className={styles.logo} aria-label="NoReset home">
+          <Link to="/" className={styles.logo} aria-label="NoReset home">
             <span className={styles.logoAccent}>Nø</span>RESET
-          </a>
+          </Link>
 
           <nav className={styles.navigation}>
             <Button

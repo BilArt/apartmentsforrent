@@ -11,6 +11,7 @@ import Benefits from "./components/Benefits/Benefits";
 import HowItWorks from "./components/HowItWorks/HowItWorks";
 import Footer from "./components/Footer/Footer";
 
+import BankIdModal from "./components/BankIdModal/BankIdModal";
 import Button from "./components/Button/Button";
 import Modal from "./components/Modal/Modal";
 import RegisterForm from "./components/RegisterForm/RegisterForm";
@@ -27,6 +28,7 @@ function App() {
   const [allListings, setAllListings] = useState([]);
   const [myListings, setMyListings] = useState([]);
   const [listingsError, setListingsError] = useState(null);
+  const [bankIdMode, setBankIdMode] = useState(null); // "signin" | "register" | null
 
   const openSignIn = () => setActiveModal("signin");
   const openRegister = () => setActiveModal("register");
@@ -85,6 +87,16 @@ function App() {
     closeModal();
   };
 
+  const openBankIdSignIn = () => {
+    setBankIdMode("signin");
+    setActiveModal("bankid");
+  };
+
+  const openBankIdRegister = () => {
+    setBankIdMode("register");
+    setActiveModal("bankid");
+  };
+
   const handleLogout = async () => {
     try {
       await authApi.logout();
@@ -93,6 +105,14 @@ function App() {
       setActiveTab("tenant");
       closeModal();
     }
+  };
+
+  const handleAddListingClick = () => {
+    if (!currentUser) {
+      openSignIn();
+      return;
+    }
+    openAddListing();
   };
 
   const handleListingCreated = async () => {
@@ -111,28 +131,61 @@ function App() {
     <>
       <Header
         isAuthed={Boolean(currentUser)}
-        onAddListing={openAddListing}
+        onAddListing={handleAddListingClick}
         onSignIn={openSignIn}
+        onSignUp={openRegister}
         onLogout={handleLogout}
       />
+
       <Hero />
       <Benefits />
       <HowItWorks />
       <Footer />
-    
+
       {activeModal === "signin" && (
-        <Modal title="Sign In with BankID mock" onClose={closeModal}>
-          <SignInForm onSignedIn={handleSignedIn} />
+        <Modal title="Увійти" onClose={closeModal}>
+          <SignInForm
+            onSignedIn={handleSignedIn}
+            onGoSignUp={openRegister}
+            onBankId={openBankIdSignIn}
+          />
         </Modal>
       )}
+
       {activeModal === "register" && (
-        <Modal title="Register new user" onClose={closeModal}>
-          <RegisterForm onRegistered={handleRegistered} />
+        <Modal title="Реєстрація" onClose={closeModal}>
+          <RegisterForm
+            onRegistered={handleRegistered}
+            onGoSignIn={openSignIn}
+            onBankId={openBankIdRegister}
+          />
         </Modal>
       )}
+
       {activeModal === "addListing" && currentUser && (
         <Modal title="Додати оголошення" onClose={closeModal}>
           <ListingForm onCreated={handleListingCreated} />
+        </Modal>
+      )}
+
+      {activeModal === "bankid" && (
+        <Modal
+          title={
+            bankIdMode === "register"
+              ? "Зареєструйте особу через BankID"
+              : "Підтвердіть особу через BankID"
+          }
+          onClose={closeModal}
+        >
+          <BankIdModal
+            mode={bankIdMode}
+            onCancel={closeModal}
+            onAuthed={(user) => {
+              setCurrentUser(user);
+              setActiveTab("tenant");
+              closeModal();
+            }}
+          />
         </Modal>
       )}
     </>
