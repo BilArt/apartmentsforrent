@@ -26,6 +26,12 @@ export const listingsApi = {
     return request(`/listings${qs}`, { method: "GET" });
   },
 
+  getById(id) {
+    return request(`/listings/${encodeURIComponent(String(id))}`, {
+      method: "GET",
+    });
+  },
+
   getMy() {
     return request("/listings/my", { method: "GET" });
   },

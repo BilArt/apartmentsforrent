@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, useNavigate } from "react-router-dom";
 
 import { authApi } from "./api/auth";
 import { fetchHealth } from "./api/health";
-import { listingsApi } from "./api/listings";
 
 import HomePage from "./pages/HomePage/HomePage";
 import ListingsPage from "./pages/ListingsPage/ListingsPage";
+import ListingDetailsPage from "./pages/ListingDetailsPage/ListingDetailsPage";
 
 import Header from "./components/Header/Header";
 import Footer from "./components/Footer/Footer";
@@ -18,22 +18,31 @@ import Modal from "./components/Modal/Modal";
 import RegisterForm from "./components/RegisterForm/RegisterForm";
 import SignInForm from "./components/SignInForm/SignInForm";
 import ListingForm from "./components/ListingForm/ListingForm";
+import ViewingRequestForm from "./components/ViewingRequestForm/ViewingRequestForm";
 
 function App() {
+  const navigate = useNavigate();
+
   const [activeModal, setActiveModal] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-  const [activeTab, setActiveTab] = useState("tenant");
   const [apiStatus, setApiStatus] = useState("checking...");
-
-  const [allListings, setAllListings] = useState([]);
-  const [myListings, setMyListings] = useState([]);
-  const [listingsError, setListingsError] = useState(null);
   const [bankIdMode, setBankIdMode] = useState(null);
+
+  const [viewingListingId, setViewingListingId] = useState(null);
 
   const openSignIn = () => setActiveModal("signin");
   const openRegister = () => setActiveModal("register");
   const openAddListing = () => setActiveModal("addListing");
-  const closeModal = () => setActiveModal(null);
+
+  const closeModal = () => {
+    setActiveModal(null);
+    setViewingListingId(null);
+  };
+
+  const openViewingRequest = (listingId) => {
+    setViewingListingId(listingId);
+    setActiveModal("viewing");
+  };
 
   useEffect(() => {
     fetchHealth()
@@ -50,37 +59,13 @@ function App() {
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    setListingsError(null);
-
-    if (activeTab === "tenant") {
-      listingsApi
-        .getAll()
-        .then(setAllListings)
-        .catch((e) => setListingsError(e.message));
-      return;
-    }
-
-    if (!currentUser) {
-      setMyListings([]);
-      return;
-    }
-
-    listingsApi
-      .getMy()
-      .then(setMyListings)
-      .catch((e) => setListingsError(e.message));
-  }, [activeTab, currentUser]);
-
   const handleRegistered = (user) => {
     setCurrentUser(user);
-    setActiveTab("tenant");
     closeModal();
   };
 
   const handleSignedIn = (user) => {
     setCurrentUser(user);
-    setActiveTab("tenant");
     closeModal();
   };
 
@@ -99,8 +84,8 @@ function App() {
       await authApi.logout();
     } finally {
       setCurrentUser(null);
-      setActiveTab("tenant");
       closeModal();
+      navigate("/");
     }
   };
 
@@ -112,16 +97,9 @@ function App() {
     openAddListing();
   };
 
-  const handleListingCreated = async () => {
-    setActiveTab("landlord");
+  const handleListingCreated = () => {
     closeModal();
-
-    try {
-      const fresh = await listingsApi.getMy();
-      setMyListings(fresh);
-    } catch (e) {
-      setListingsError(e.message);
-    }
+    navigate("/listings");
   };
 
   return (
@@ -137,6 +115,10 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/listings" element={<ListingsPage />} />
+        <Route
+          path="/listings/:listingId"
+          element={<ListingDetailsPage onRequestViewing={openViewingRequest} />}
+        />
       </Routes>
 
       <Footer />
@@ -167,6 +149,15 @@ function App() {
         </Modal>
       )}
 
+      {activeModal === "viewing" && (
+        <Modal title="Запросити перегляд" onClose={closeModal}>
+          <ViewingRequestForm
+            listingId={viewingListingId}
+            onSubmitted={closeModal}
+          />
+        </Modal>
+      )}
+
       {activeModal === "bankid" && (
         <Modal
           title={
@@ -181,7 +172,6 @@ function App() {
             onCancel={closeModal}
             onAuthed={(user) => {
               setCurrentUser(user);
-              setActiveTab("tenant");
               closeModal();
             }}
           />

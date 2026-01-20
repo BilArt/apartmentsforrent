@@ -1,0 +1,258 @@
+/* форма НЕ должна быть “карточкой в карточке” — модалка уже card */
+.card {
+  background: transparent;
+  border-radius: 0;
+  box-shadow: none;
+  padding: 0;
+}
+
+/* meta line пусть будет компактнее */
+.metaLine {
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.55);
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.metaValue {
+  color: var(--color-text-primary);
+  font-weight: 800;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.fieldWide {
+  grid-column: auto;
+}
+
+.label {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.15;
+  max-width: 520px;
+  padding-left: 8px;
+}
+
+/* инпуты/контролы — как в SearchPanel */
+.control {
+  position: relative;
+  height: 44px;
+  width: 100%;
+
+  input {
+    width: 100%;
+    height: 44px;
+    border-radius: 999px;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    padding: 0 56px 0 16px;
+    outline: none;
+    background: #fff;
+    min-width: 0;
+  }
+}
+
+.clearBtn {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  z-index: 2;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+  }
+}
+
+.selectBox {
+  position: relative;
+  width: 100%;
+}
+
+.selectBtn {
+  width: 100%;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  padding: 0 52px 0 16px;
+  background: #fff;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+
+.selectValue {
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: var(--color-secondary);
+  font-size: 16px;
+  min-width: 0;
+}
+
+.selectValueActive {
+  color: var(--color-text-primary);
+  font-weight: 600;
+}
+
+.selectIcon {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+  }
+}
+
+.selectClearWrap {
+  position: absolute;
+  right: 42px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+}
+
+.selectClearBtn {
+  border: 0;
+  background: transparent;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+  }
+}
+
+.calendarWrap {
+  position: absolute;
+  top: calc(100% + 14px);
+  left: 0;
+  right: auto;
+  z-index: 70;
+}
+
+.textarea {
+  width: 100%;
+  border-radius: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  padding: 12px 14px;
+  outline: none;
+  background: #fff;
+  resize: vertical;
+  min-height: 110px;
+}
+
+.bottomRow {
+  margin-top: 18px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  width: 100%;
+}
+
+.clearFilters {
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: rgba(0, 0, 0, 0.55);
+  display: inline-flex;
+  align-items: left;
+  gap: 10px;
+
+  &:hover {
+    color: rgba(0, 0, 0, 0.8);
+  }
+}
+
+.searchBtn {
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 50px;
+  margin-left: auto;
+  border: 0;
+  background-color: var(--color-primary);
+  color: #fff;
+  cursor: pointer;
+
+  transition: background-color 200ms ease;
+
+  &:hover {
+    background-color: #ff7377;
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}
+
+.note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgba(0, 0, 0, 0.45);
+  line-height: 1.55;
+  font-weight: 600;
+}
+
+@media (max-width: 720px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
