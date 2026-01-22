@@ -32,4 +32,12 @@ export const users: User[] = [
     phone: '+380 67 333 33 33',
     bankId: 'SEED-BANKID-3',
   },
+  {
+    id: 'seed-tenant-1',
+    rating: 4.5,
+    firstName: 'Паша',
+    lastName: 'Каштан',
+    phone: '+380 67 999 99 99',
+    bankId: 'SEED-BANKID-TENANT-1',
+  },
 ];

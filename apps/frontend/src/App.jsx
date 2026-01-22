@@ -9,6 +9,7 @@ import { fetchHealth } from "./api/health";
 import HomePage from "./pages/HomePage/HomePage";
 import ListingsPage from "./pages/ListingsPage/ListingsPage";
 import ListingDetailsPage from "./pages/ListingDetailsPage/ListingDetailsPage";
+import RequestsPage from "./pages/RequestsPage/RequestsPage";
 
 import Header from "./components/Header/Header";
 import Footer from "./components/Footer/Footer";
@@ -18,6 +19,7 @@ import Modal from "./components/Modal/Modal";
 import RegisterForm from "./components/RegisterForm/RegisterForm";
 import SignInForm from "./components/SignInForm/SignInForm";
 import ListingForm from "./components/ListingForm/ListingForm";
+
 import ViewingRequestForm from "./components/ViewingRequestForm/ViewingRequestForm";
 
 function App() {
@@ -33,15 +35,10 @@ function App() {
   const openSignIn = () => setActiveModal("signin");
   const openRegister = () => setActiveModal("register");
   const openAddListing = () => setActiveModal("addListing");
-
   const closeModal = () => {
     setActiveModal(null);
     setViewingListingId(null);
-  };
-
-  const openViewingRequest = (listingId) => {
-    setViewingListingId(listingId);
-    setActiveModal("viewing");
+    setBankIdMode(null);
   };
 
   useEffect(() => {
@@ -102,6 +99,30 @@ function App() {
     navigate("/listings");
   };
 
+  const handleRequestViewing = (listingId) => {
+    if (!listingId) return;
+
+    if (!currentUser) {
+      setViewingListingId(listingId);
+      setActiveModal("signin");
+      return;
+    }
+
+    setViewingListingId(listingId);
+    setActiveModal("viewing");
+  };
+
+  const handleSignedInSmart = (user) => {
+    setCurrentUser(user);
+
+    if (viewingListingId) {
+      setActiveModal("viewing");
+      return;
+    }
+
+    closeModal();
+  };
+
   return (
     <>
       <Header
@@ -115,9 +136,22 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/listings" element={<ListingsPage />} />
+
         <Route
           path="/listings/:listingId"
-          element={<ListingDetailsPage onRequestViewing={openViewingRequest} />}
+          element={
+            <ListingDetailsPage onRequestViewing={handleRequestViewing} />
+          }
+        />
+
+        <Route
+          path="/requests"
+          element={
+            <RequestsPage
+              currentUser={currentUser}
+              onRequireAuth={openSignIn}
+            />
+          }
         />
       </Routes>
 
@@ -126,7 +160,7 @@ function App() {
       {activeModal === "signin" && (
         <Modal title="Увійти" onClose={closeModal}>
           <SignInForm
-            onSignedIn={handleSignedIn}
+            onSignedIn={handleSignedInSmart}
             onGoSignUp={openRegister}
             onBankId={openBankIdSignIn}
           />
@@ -149,15 +183,6 @@ function App() {
         </Modal>
       )}
 
-      {activeModal === "viewing" && (
-        <Modal title="Запросити перегляд" onClose={closeModal}>
-          <ViewingRequestForm
-            listingId={viewingListingId}
-            onSubmitted={closeModal}
-          />
-        </Modal>
-      )}
-
       {activeModal === "bankid" && (
         <Modal
           title={
@@ -172,6 +197,24 @@ function App() {
             onCancel={closeModal}
             onAuthed={(user) => {
               setCurrentUser(user);
+
+              if (viewingListingId) {
+                setActiveModal("viewing");
+                return;
+              }
+
+              closeModal();
+            }}
+          />
+        </Modal>
+      )}
+
+      {activeModal === "viewing" && viewingListingId && (
+        <Modal title="Запит на перегляд" onClose={closeModal}>
+          <ViewingRequestForm
+            listingId={viewingListingId}
+            onCancel={closeModal}
+            onSuccess={() => {
               closeModal();
             }}
           />

@@ -1,0 +1,176 @@
+.page {
+  padding: 24px 0 40px;
+}
+
+.headerRow {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.title {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.tabs {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tab,
+.tabActive {
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tabActive {
+  border-color: transparent;
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.state {
+  padding: 14px 0;
+  opacity: 0.75;
+}
+
+.stateError {
+  color: #b00020;
+  opacity: 1;
+}
+
+.empty {
+  padding: 18px 0;
+  opacity: 0.7;
+}
+
+.list {
+  display: grid;
+  gap: 14px;
+
+  max-width: 960px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 22px;
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+}
+
+.cardTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cardTitle {
+  font-weight: 700;
+  font-size: 18px;
+}
+
+.cardSub {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0.75;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.06);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.dot {
+  opacity: 0.5;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.actionBtn,
+.actionBtnGhost {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 0;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.actionBtn {
+  background: var(--color-primary);
+  color: #fff;
+}
+
+.actionBtn:hover {
+  background: #ff7377;
+}
+
+.actionBtnGhost {
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.actionBtnGhost:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.actionBtn:disabled,
+.actionBtnGhost:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.row {
+  margin-top: 14px;
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 10px;
+}
+
+.label {
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.value {
+  font-weight: 600;
+}
+
+.messageBox {
+  margin-top: 14px;
+}
+
+.message {
+  margin: 8px 0 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.04);
+  white-space: pre-wrap;
+  font-family: inherit;
+  line-height: 1.35;
+}

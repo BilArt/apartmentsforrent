@@ -7,6 +7,8 @@ import calStyles from "../CalendarDropdown/CalendarDropdown.module.scss";
 import CalendarIcon from "../../assets/svg/calendar.svg?react";
 import ClearIcon from "../../assets/svg/clear.svg?react";
 
+import { requestsApi } from "../../api/requests";
+
 function pad2(n) {
   return String(n).padStart(2, "0");
 }
@@ -30,228 +32,180 @@ function sameDay(a, b) {
   );
 }
 
-export default function ViewingRequestForm({ listingId, onSubmitted }) {
-  const [openId, setOpenId] = useState(null);
-  const dropdownRefs = useRef(new Map());
-
-  const registerDropdownRef = (id) => (node) => {
-    if (!id) return;
-    if (node) dropdownRefs.current.set(id, node);
-    else dropdownRefs.current.delete(id);
-  };
-
-  useEffect(() => {
-    const onDown = (e) => {
-      if (!openId) return;
-
-      const node = dropdownRefs.current.get(openId);
-      if (!node) {
-        setOpenId(null);
-        return;
-      }
-
-      if (!node.contains(e.target)) setOpenId(null);
-    };
-
-    document.addEventListener("mousedown", onDown);
-    return () => document.removeEventListener("mousedown", onDown);
-  }, [openId]);
-
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Escape") setOpenId(null);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, []);
-
-  const toggle = (id) => setOpenId((prev) => (prev === id ? null : id));
-
-  const today = useMemo(() => startOfDay(new Date()), []);
-  const [whenDate, setWhenDate] = useState(null); // Date | null
-
-  const whenLabel = useMemo(() => {
-    if (!whenDate) return "Обрати дату";
-    if (sameDay(whenDate, today)) return "Від сьогодні";
-    return formatUaDate(whenDate);
-  }, [whenDate, today]);
+export default function ViewingRequestForm({
+  listingId,
+  onCancel,
+  onSuccess,
+}) {
+  const [open, setOpen] = useState(false);
+  const calWrapRef = useRef(null);
 
   const [name, setName] = useState("");
   const [contact, setContact] = useState("");
-  const [message, setMessage] = useState("");
+  const [date, setDate] = useState(null);
+  const [comment, setComment] = useState("");
 
-  const canSubmit = useMemo(() => {
-    return name.trim().length >= 2 && contact.trim().length >= 3;
-  }, [name, contact]);
+  const [status, setStatus] = useState("idle");
+  const [error, setError] = useState("");
 
-  const clearDate = () => setWhenDate(null);
+  const today = useMemo(() => startOfDay(new Date()), []);
+  const dateLabel = useMemo(() => {
+    if (!date) return "Обрати дату";
+    if (sameDay(date, today)) return "Від сьогодні";
+    return formatUaDate(date);
+  }, [date, today]);
 
-  const handleSubmit = (e) => {
+  useEffect(() => {
+    const onDown = (e) => {
+      if (!open) return;
+      if (calWrapRef.current && !calWrapRef.current.contains(e.target)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  const submit = async (e) => {
     e.preventDefault();
 
+    setError("");
+
+    if (!name.trim()) return setError("Вкажи ім'я.");
+    if (!contact.trim()) return setError("Вкажи контакт.");
+    if (!date) return setError("Обери дату.");
+
+    const iso = formatISODate(date);
+
     const payload = {
-      listingId,
-      name: name.trim(),
-      contact: contact.trim(),
-      preferredDate: whenDate ? formatISODate(whenDate) : null,
-      message: message.trim() || null,
+      from: iso,
+      to: iso,
+      message: `Ім'я: ${name.trim()}
+Контакт: ${contact.trim()}${
+        comment.trim() ? `\n\nКоментар:\n${comment.trim()}` : ""
+      }`,
     };
 
-    // MVP: пока просто лог, позже заменим на POST
-    console.log("VIEWING REQUEST:", payload);
-
-    onSubmitted?.();
+    try {
+      setStatus("loading");
+      await requestsApi.create(listingId, payload);
+      setStatus("ok");
+      onSuccess?.();
+    } catch (err) {
+      setStatus("error");
+      setError(err?.message || "Не вдалося надіслати запит.");
+    }
   };
 
   return (
-    <form className={styles.card} onSubmit={handleSubmit}>
-      <div className={styles.metaLine}>
-        Оголошення: <span className={styles.metaValue}>{listingId || "—"}</span>
-      </div>
+    <form className={styles.form} onSubmit={submit}>
+      <div className={styles.subtitle}>Оголошення: {listingId}</div>
 
-      <div className={styles.grid}>
-        {/* Имя */}
-        <div className={styles.field}>
-          <label className={styles.label}>Ім’я</label>
+      {error ? <div className={styles.error}>{error}</div> : null}
 
-          <div className={styles.control}>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Напр. Артем"
-              autoComplete="name"
-            />
-
-            {name && (
-              <button
-                type="button"
-                className={styles.clearBtn}
-                onClick={() => setName("")}
-                aria-label="Clear name"
-              >
-                <ClearIcon />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Контакт */}
-        <div className={styles.field}>
-          <label className={styles.label}>Контакт (телефон / Telegram)</label>
-
-          <div className={styles.control}>
-            <input
-              value={contact}
-              onChange={(e) => setContact(e.target.value)}
-              placeholder="+45… або @username"
-              autoComplete="tel"
-            />
-
-            {contact && (
-              <button
-                type="button"
-                className={styles.clearBtn}
-                onClick={() => setContact("")}
-                aria-label="Clear contact"
-              >
-                <ClearIcon />
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Дата — наш CalendarDropdown */}
-        <div className={styles.field}>
-          <label className={styles.label}>Бажана дата</label>
-
-          <div className={styles.selectBox} ref={registerDropdownRef("when")}>
+      <div className={styles.field}>
+        <label className={styles.label}>Ім'я</label>
+        <div className={styles.control}>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Напр. Артем"
+          />
+          {name && (
             <button
               type="button"
-              className={styles.selectBtn}
-              onClick={() => toggle("when")}
-              aria-expanded={openId === "when"}
+              className={styles.clearBtn}
+              onClick={() => setName("")}
+              aria-label="Clear name"
             >
-              <span
-                className={`${styles.selectValue} ${
-                  whenDate ? styles.selectValueActive : ""
-                }`}
-              >
-                {whenLabel}
-              </span>
-
-              {/* кнопка очистки даты */}
-              {whenDate && (
-                <span className={styles.selectClearWrap}>
-                  <button
-                    type="button"
-                    className={styles.selectClearBtn}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      clearDate();
-                    }}
-                    aria-label="Clear date"
-                  >
-                    <ClearIcon />
-                  </button>
-                </span>
-              )}
-
-              <span className={styles.selectIcon} aria-hidden="true">
-                <CalendarIcon />
-              </span>
+              <ClearIcon />
             </button>
-
-            {openId === "when" && (
-              <div className={styles.calendarWrap}>
-                <CalendarDropdown
-                  value={whenDate}
-                  onChange={(d) => setWhenDate(d)}
-                  classNames={calStyles}
-                  onClose={() => setOpenId(null)}
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Комментарий */}
-        <div className={`${styles.field} ${styles.fieldWide}`}>
-          <label className={styles.label}>Коментар</label>
-
-          <textarea
-            className={styles.textarea}
-            rows={4}
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Коротко: коли зручно, скільки людей буде, чи є тварини і інші питання…"
-          />
+          )}
         </div>
       </div>
 
-      <div className={styles.bottomRow}>
-        <div className={styles.actions}>
+      <div className={styles.field}>
+        <label className={styles.label}>Контакт (телефон / Telegram)</label>
+        <div className={styles.control}>
+          <input
+            value={contact}
+            onChange={(e) => setContact(e.target.value)}
+            placeholder="+45... або @username"
+          />
+          {contact && (
+            <button
+              type="button"
+              className={styles.clearBtn}
+              onClick={() => setContact("")}
+              aria-label="Clear contact"
+            >
+              <ClearIcon />
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.label}>Бажана дата</label>
+
+        <div className={styles.selectBox} ref={calWrapRef}>
           <button
             type="button"
-            className={styles.clearFilters}
-            onClick={() => onSubmitted?.()}
+            className={styles.selectBtn}
+            onClick={() => setOpen((v) => !v)}
+            aria-expanded={open}
           >
-            × <span>Скасувати</span>
+            <span className={styles.selectValue}>{dateLabel}</span>
+            <span className={styles.selectIcon} aria-hidden="true">
+              <CalendarIcon />
+            </span>
           </button>
 
-          <button
-            type="submit"
-            className={styles.searchBtn}
-            disabled={!canSubmit}
-            aria-disabled={!canSubmit}
-          >
-            Надіслати запит
-          </button>
+          {open && (
+            <div className={styles.calendarWrap}>
+              <CalendarDropdown
+                value={date}
+                onChange={(d) => setDate(d)}
+                classNames={calStyles}
+                onClose={() => setOpen(false)}
+              />
+            </div>
+          )}
         </div>
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.label}>Коментар</label>
+        <textarea
+          className={styles.textarea}
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Коротко: коли зручно, скільки людей буде, чи є тварини і інші питання..."
+          rows={5}
+        />
+      </div>
+
+      <div className={styles.actions}>
+        <button
+          type="button"
+          className={styles.cancelBtn}
+          onClick={onCancel}
+          disabled={status === "loading"}
+        >
+          × Скасувати
+        </button>
+
+        <button
+          type="submit"
+          className={styles.submitBtn}
+          disabled={status === "loading"}
+        >
+          {status === "loading" ? "Надсилаю..." : "Надіслати запит"}
+        </button>
       </div>
 
       <div className={styles.note}>
-        MVP: зараз запит лише логиться в консоль. Далі підключимо API.
+        MVP: запит йде на бекенд через /listings/:id/requests.
       </div>
     </form>
   );

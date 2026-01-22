@@ -8,8 +8,14 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    origin: [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+    ],
     credentials: true,
+    methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   app.use(
@@ -36,7 +42,7 @@ async function bootstrap() {
 
   await app.listen(3000);
 }
+
 bootstrap().catch((err) => {
   console.error(err);
-  process.exit(1);
 });
