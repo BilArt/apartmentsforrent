@@ -1,3 +1,4 @@
+// src/App.jsx
 import { useEffect, useState } from "react";
 import "./App.css";
 
@@ -27,6 +28,10 @@ function App() {
 
   const [activeModal, setActiveModal] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
+
+  const [authLoading, setAuthLoading] = useState(true);
+
+  // можно оставить, но пока не используешь — не мешает
   const [apiStatus, setApiStatus] = useState("checking...");
   const [bankIdMode, setBankIdMode] = useState(null);
 
@@ -35,6 +40,7 @@ function App() {
   const openSignIn = () => setActiveModal("signin");
   const openRegister = () => setActiveModal("register");
   const openAddListing = () => setActiveModal("addListing");
+
   const closeModal = () => {
     setActiveModal(null);
     setViewingListingId(null);
@@ -47,22 +53,34 @@ function App() {
       .catch(() => setApiStatus("API: FAIL"));
   }, []);
 
+  // Инициализация сессии (важно: сначала authLoading=true)
   useEffect(() => {
-    authApi
-      .me()
-      .then((user) => {
-        if (user) setCurrentUser(user);
-      })
-      .catch(() => {});
+    let alive = true;
+
+    setAuthLoading(true);
+
+    (async () => {
+      try {
+        const user = await authApi.me();
+        if (!alive) return;
+        setCurrentUser(user || null);
+      } catch {
+        if (!alive) return;
+        setCurrentUser(null);
+      } finally {
+        if (!alive) return;
+        setAuthLoading(false);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
   }, []);
 
   const handleRegistered = (user) => {
     setCurrentUser(user);
-    closeModal();
-  };
-
-  const handleSignedIn = (user) => {
-    setCurrentUser(user);
+    setAuthLoading(false);
     closeModal();
   };
 
@@ -81,12 +99,15 @@ function App() {
       await authApi.logout();
     } finally {
       setCurrentUser(null);
+      setAuthLoading(false);
       closeModal();
       navigate("/");
     }
   };
 
   const handleAddListingClick = () => {
+    if (authLoading) return;
+
     if (!currentUser) {
       openSignIn();
       return;
@@ -102,7 +123,8 @@ function App() {
   const handleRequestViewing = (listingId) => {
     if (!listingId) return;
 
-    if (!currentUser) {
+    // если не проверили сессию — пусть сперва логин
+    if (authLoading || !currentUser) {
       setViewingListingId(listingId);
       setActiveModal("signin");
       return;
@@ -114,6 +136,7 @@ function App() {
 
   const handleSignedInSmart = (user) => {
     setCurrentUser(user);
+    setAuthLoading(false);
 
     if (viewingListingId) {
       setActiveModal("viewing");
@@ -123,10 +146,12 @@ function App() {
     closeModal();
   };
 
+  const isAuthed = !authLoading && Boolean(currentUser);
+
   return (
     <>
       <Header
-        isAuthed={Boolean(currentUser)}
+        isAuthed={isAuthed}
         onAddListing={handleAddListingClick}
         onSignIn={openSignIn}
         onSignUp={openRegister}
@@ -148,7 +173,8 @@ function App() {
           path="/requests"
           element={
             <RequestsPage
-              currentUser={currentUser}
+              isAuthed={isAuthed}
+              authLoading={authLoading}
               onRequireAuth={openSignIn}
             />
           }
@@ -197,6 +223,7 @@ function App() {
             onCancel={closeModal}
             onAuthed={(user) => {
               setCurrentUser(user);
+              setAuthLoading(false);
 
               if (viewingListingId) {
                 setActiveModal("viewing");
@@ -214,9 +241,7 @@ function App() {
           <ViewingRequestForm
             listingId={viewingListingId}
             onCancel={closeModal}
-            onSuccess={() => {
-              closeModal();
-            }}
+            onSuccess={closeModal}
           />
         </Modal>
       )}

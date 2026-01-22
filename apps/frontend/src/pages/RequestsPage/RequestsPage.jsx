@@ -1,275 +1,363 @@
 import { useEffect, useMemo, useState } from "react";
-import styles from "./RequestsPage.module.scss";
+import { useNavigate } from "react-router-dom";
 import { requestsApi } from "../../api/requests";
+import styles from "./RequestsPage.module.scss";
 
-const TABS = {
-  MY: "my",
-  INCOMING: "incoming",
-};
-
-const STATUS = {
-  PENDING: "PENDING",
-  APPROVED: "APPROVED",
-  REJECTED: "REJECTED",
-  COMPLETED: "COMPLETED",
-};
-
-function formatDateUA(s) {
-  if (!s) return "—";
-  // ожидаем YYYY-MM-DD или ISO, на всякий:
-  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(s));
-  if (m) return `${m[3]}.${m[2]}.${m[1]}`;
-  return String(s);
+function formatUaDateFromIso(iso) {
+  if (!iso) return "—";
+  const s = String(iso).slice(0, 10);
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+  if (!m) return s;
+  return `${m[3]}.${m[2]}.${m[1]}`;
 }
 
-function statusLabel(st) {
-  switch (st) {
-    case STATUS.PENDING:
+function statusLabel(status) {
+  switch (status) {
+    case "PENDING":
       return "Очікує";
-    case STATUS.APPROVED:
+    case "APPROVED":
       return "Схвалено";
-    case STATUS.REJECTED:
+    case "REJECTED":
       return "Відхилено";
-    case STATUS.COMPLETED:
+    case "COMPLETED":
       return "Завершено";
     default:
-      return st || "—";
+      return status || "—";
   }
 }
 
-export default function RequestsPage({ currentUser, onRequireAuth }) {
-  const [tab, setTab] = useState(TABS.MY);
+function statusTone(status) {
+  switch (status) {
+    case "PENDING":
+      return styles.badgePending;
+    case "APPROVED":
+      return styles.badgeApproved;
+    case "REJECTED":
+      return styles.badgeRejected;
+    case "COMPLETED":
+      return styles.badgeCompleted;
+    default:
+      return "";
+  }
+}
+
+export default function RequestsPage({
+  currentUser,
+  authLoading,
+  onRequireAuth,
+}) {
+  const navigate = useNavigate();
+
+  const isAuthed = !authLoading && Boolean(currentUser);
+
+  const [tab, setTab] = useState("incoming");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const [my, setMy] = useState([]);
   const [incoming, setIncoming] = useState([]);
 
-  const [status, setStatus] = useState("loading"); // loading | ok | error
-  const [error, setError] = useState("");
+  const [updatingIds, setUpdatingIds] = useState(() => new Set());
 
-  const isAuthed = Boolean(currentUser);
+  const incomingCount = incoming?.length || 0;
+  const myCount = my?.length || 0;
 
-  useEffect(() => {
-    if (!isAuthed) {
-      onRequireAuth?.();
-      return;
-    }
+  const list = tab === "incoming" ? incoming : my;
 
-    let alive = true;
+  const refresh = async () => {
+    setLoading(true);
+    setError("");
 
-    (async () => {
-      try {
-        setStatus("loading");
-        setError("");
-
-        // параллельно
-        const [myRes, incomingRes] = await Promise.all([
-          requestsApi.getMy().catch((e) => {
-            throw e;
-          }),
-          requestsApi.getIncoming().catch((e) => {
-            throw e;
-          }),
-        ]);
-
-        if (!alive) return;
-
-        const myList = Array.isArray(myRes) ? myRes : [];
-        const incList = Array.isArray(incomingRes) ? incomingRes : [];
-
-        setMy(myList);
-        setIncoming(incList);
-
-        // авто-таб: если входящие есть — показываем их
-        setTab(incList.length > 0 ? TABS.INCOMING : TABS.MY);
-
-        setStatus("ok");
-      } catch (e) {
-        if (!alive) return;
-
-        const msg = e?.message || "Failed to load requests";
-        setError(msg);
-        setStatus("error");
-
-        // если сервер вернул 401 (обычно сообщение "Not authenticated")
-        if (String(msg).toLowerCase().includes("not authenticated")) {
-          onRequireAuth?.();
-        }
-      }
-    })();
-
-    return () => {
-      alive = false;
-    };
-  }, [isAuthed]);
-
-  const activeList = tab === TABS.INCOMING ? incoming : my;
-
-  const updateStatus = async (requestId, nextStatus) => {
     try {
-      // оптимистично обновим UI в incoming
-      setIncoming((prev) =>
-        prev.map((r) => (r.id === requestId ? { ...r, status: nextStatus } : r))
-      );
+      const [myData, incomingData] = await Promise.all([
+        requestsApi.getMy(),
+        requestsApi.getIncoming(),
+      ]);
 
-      const updated = await requestsApi.updateStatus(requestId, nextStatus);
-
-      // и точно синхронизируем
-      setIncoming((prev) =>
-        prev.map((r) => (r.id === requestId ? updated : r))
-      );
+      setMy(Array.isArray(myData) ? myData : []);
+      setIncoming(Array.isArray(incomingData) ? incomingData : []);
     } catch (e) {
-      // откатимся (перезагрузим входящие)
-      try {
-        const inc = await requestsApi.getIncoming();
-        setIncoming(Array.isArray(inc) ? inc : []);
-      } catch {
-        // игнор
+      const msg = e?.message || "Не вдалося завантажити заявки";
+
+      if (/not authenticated|unauthorized|401/i.test(String(msg))) {
+        setError("Схоже, твоя сесія закінчилась. Увійди ще раз.");
+      } else {
+        setError(msg);
       }
-      alert(e?.message || "Failed to update status");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const tabsMeta = useMemo(
-    () => [
-      { id: TABS.MY, label: `Мої заявки (${my.length})` },
-      { id: TABS.INCOMING, label: `Вхідні (${incoming.length})` },
-    ],
-    [my.length, incoming.length]
-  );
+  useEffect(() => {
+    if (authLoading) return;
+
+    if (!isAuthed) return;
+
+    refresh();
+  }, [authLoading, isAuthed]);
+
+  const onChangeStatus = async (requestId, newStatus) => {
+    if (!requestId) return;
+
+    setUpdatingIds((prev) => new Set(prev).add(requestId));
+
+    try {
+      const updated = await requestsApi.updateStatus(requestId, newStatus);
+
+      const applyUpdated = (arr) =>
+        arr.map((r) => (r.id === requestId ? updated : r));
+
+      setIncoming((prev) => applyUpdated(prev));
+      setMy((prev) => applyUpdated(prev));
+    } catch (e) {
+      alert(e?.message || "Не вдалося оновити статус");
+    } finally {
+      setUpdatingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(requestId);
+        return next;
+      });
+    }
+  };
+
+  const canUseActions = tab === "incoming";
+
+  const content = useMemo(() => {
+    if (authLoading) {
+      return <div className={styles.state}>Перевіряємо сесію…</div>;
+    }
+
+    if (!isAuthed) {
+      return (
+        <div className={styles.state}>
+          <div className={styles.stateTitle}>Потрібна авторизація</div>
+          <div className={styles.stateText}>
+            Увійди, щоб переглядати заявки.
+          </div>
+
+          <div className={styles.stateActions}>
+            <button
+              type="button"
+              className={styles.primaryBtn}
+              onClick={() => onRequireAuth?.()}
+            >
+              Увійти
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryBtn}
+              onClick={() => navigate("/")}
+            >
+              На головну
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (loading) return <div className={styles.state}>Завантаження…</div>;
+
+    if (error) {
+      return (
+        <div className={`${styles.state} ${styles.stateError}`}>
+          <div className={styles.stateTitle}>Помилка</div>
+          <div className={styles.stateText}>{error}</div>
+
+          <div className={styles.stateActions}>
+            <button
+              type="button"
+              className={styles.primaryBtn}
+              onClick={refresh}
+            >
+              Спробувати ще раз
+            </button>
+
+            {/сесія.*закінчилась/i.test(error) ? (
+              <button
+                type="button"
+                className={styles.secondaryBtn}
+                onClick={() => onRequireAuth?.()}
+              >
+                Увійти
+              </button>
+            ) : null}
+          </div>
+        </div>
+      );
+    }
+
+    if (!list.length) {
+      return (
+        <div className={styles.state}>
+          <div className={styles.stateTitle}>Поки що порожньо</div>
+          <div className={styles.stateText}>
+            {tab === "incoming"
+              ? "У тебе ще немає вхідних заявок."
+              : "Ти ще не надсилав заявки на перегляд."}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className={styles.list}>
+        {list.map((r) => {
+          const listingTitle = r?.listing?.title || "Оголошення";
+          const from = formatUaDateFromIso(r?.from);
+          const to = formatUaDateFromIso(r?.to);
+
+          const tenantName =
+            r?.tenant?.firstName || r?.tenant?.lastName
+              ? `${r?.tenant?.firstName || ""} ${r?.tenant?.lastName || ""}`.trim()
+              : "—";
+
+          const tenantRating =
+            typeof r?.tenant?.rating === "number"
+              ? ` (⭐ ${r.tenant.rating})`
+              : "";
+
+          const isUpdating = updatingIds.has(r.id);
+
+          const isPending = r.status === "PENDING";
+          const isApproved = r.status === "APPROVED";
+          const isRejected = r.status === "REJECTED";
+          const isCompleted = r.status === "COMPLETED";
+
+          const landlordLabel =
+            r?.listing?.landlordName || r?.listing?.ownerId || "—";
+
+          return (
+            <article key={r.id} className={styles.card}>
+              <div className={styles.cardTop}>
+                <div className={styles.cardTitleWrap}>
+                  <div className={styles.cardTitle}>{listingTitle}</div>
+
+                  <div className={styles.subRow}>
+                    <span className={`${styles.badge} ${statusTone(r.status)}`}>
+                      {statusLabel(r.status)}
+                    </span>
+                    <span className={styles.dot}>•</span>
+                    <span className={styles.dates}>
+                      {from} — {to}
+                    </span>
+                  </div>
+                </div>
+
+                {canUseActions && (
+                  <div className={styles.actions}>
+                    <button
+                      type="button"
+                      className={styles.primaryBtn}
+                      onClick={() => onChangeStatus(r.id, "APPROVED")}
+                      disabled={isUpdating || !isPending}
+                      title={
+                        !isPending ? "Доступно тільки для статусу PENDING" : ""
+                      }
+                    >
+                      Схвалити
+                    </button>
+
+                    <button
+                      type="button"
+                      className={styles.ghostBtn}
+                      onClick={() => onChangeStatus(r.id, "REJECTED")}
+                      disabled={isUpdating || !isPending}
+                      title={
+                        !isPending ? "Доступно тільки для статусу PENDING" : ""
+                      }
+                    >
+                      Відхилити
+                    </button>
+
+                    <button
+                      type="button"
+                      className={styles.secondaryBtn}
+                      onClick={() => onChangeStatus(r.id, "COMPLETED")}
+                      disabled={
+                        isUpdating || isRejected || isCompleted || !isApproved
+                      }
+                      title={
+                        !isApproved
+                          ? "Завершити можна тільки після схвалення"
+                          : ""
+                      }
+                    >
+                      Завершити
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.metaGrid}>
+                <div className={styles.metaItem}>
+                  <div className={styles.metaLabel}>
+                    {tab === "incoming" ? "Орендар" : "Орендодавець"}
+                  </div>
+                  <div className={styles.metaValue}>
+                    {tab === "incoming"
+                      ? `${tenantName}${tenantRating}`
+                      : landlordLabel}
+                  </div>
+                </div>
+
+                <div className={styles.metaItem}>
+                  <div className={styles.metaLabel}>ID заявки</div>
+                  <div className={styles.metaValue}>{r.id}</div>
+                </div>
+              </div>
+
+              <div className={styles.messageLabel}>Повідомлення</div>
+              <div className={styles.messageBox}>
+                {r?.message ? r.message : "—"}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    );
+  }, [
+    authLoading,
+    isAuthed,
+    loading,
+    error,
+    list,
+    tab,
+    updatingIds,
+    navigate,
+    onRequireAuth,
+  ]);
+
+  const tabsDisabled = authLoading || !isAuthed;
 
   return (
     <div className={styles.page}>
       <div className="container">
-        <div className={styles.headerRow}>
-          <h1 className={styles.title}>Заявки</h1>
+        <div className={styles.headRow}>
+          <h1 className={styles.h1}>Заявки</h1>
 
-          <div
-            className={styles.tabs}
-            role="tablist"
-            aria-label="Requests tabs"
-          >
-            {tabsMeta.map((t) => {
-              const active = t.id === tab;
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  className={active ? styles.tabActive : styles.tab}
-                  onClick={() => setTab(t.id)}
-                  aria-selected={active}
-                  role="tab"
-                >
-                  {t.label}
-                </button>
-              );
-            })}
+          <div className={styles.tabs}>
+            <button
+              type="button"
+              className={`${styles.tabBtn} ${tab === "my" ? styles.tabActive : ""}`}
+              onClick={() => setTab("my")}
+              disabled={tabsDisabled}
+            >
+              Мої заявки ({myCount})
+            </button>
+
+            <button
+              type="button"
+              className={`${styles.tabBtn} ${tab === "incoming" ? styles.tabActive : ""}`}
+              onClick={() => setTab("incoming")}
+              disabled={tabsDisabled}
+            >
+              Вхідні ({incomingCount})
+            </button>
           </div>
         </div>
 
-        {status === "loading" && (
-          <div className={styles.state}>Завантаження…</div>
-        )}
-
-        {status === "error" && (
-          <div className={`${styles.state} ${styles.stateError}`}>
-            Помилка: {error}
-          </div>
-        )}
-
-        {status === "ok" && (
-          <>
-            {activeList.length === 0 ? (
-              <div className={styles.empty}>
-                {tab === TABS.INCOMING
-                  ? "Вхідних заявок поки немає."
-                  : "Ти ще не створював(ла) заявок."}
-              </div>
-            ) : (
-              <div className={styles.list}>
-                {activeList.map((r) => {
-                  const listingTitle =
-                    r?.listing?.title || r?.listingId || "Оголошення";
-                  const tenantName = r?.tenant
-                    ? `${r.tenant.firstName} ${r.tenant.lastName}`
-                    : r?.tenantId;
-
-                  return (
-                    <article key={r.id} className={styles.card}>
-                      <div className={styles.cardTop}>
-                        <div>
-                          <div className={styles.cardTitle}>{listingTitle}</div>
-                          <div className={styles.cardSub}>
-                            <span className={styles.pill}>
-                              {statusLabel(r.status)}
-                            </span>
-                            <span className={styles.dot}>•</span>
-                            <span>
-                              {formatDateUA(r.from)} — {formatDateUA(r.to)}
-                            </span>
-                          </div>
-                        </div>
-
-                        {tab === TABS.INCOMING ? (
-                          <div className={styles.actions}>
-                            <button
-                              type="button"
-                              className={styles.actionBtn}
-                              disabled={r.status !== STATUS.PENDING}
-                              onClick={() =>
-                                updateStatus(r.id, STATUS.APPROVED)
-                              }
-                            >
-                              Схвалити
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.actionBtnGhost}
-                              disabled={r.status !== STATUS.PENDING}
-                              onClick={() =>
-                                updateStatus(r.id, STATUS.REJECTED)
-                              }
-                            >
-                              Відхилити
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.actionBtnGhost}
-                              disabled={r.status !== STATUS.APPROVED}
-                              onClick={() =>
-                                updateStatus(r.id, STATUS.COMPLETED)
-                              }
-                            >
-                              Завершити
-                            </button>
-                          </div>
-                        ) : null}
-                      </div>
-
-                      {tab === TABS.INCOMING ? (
-                        <div className={styles.row}>
-                          <div className={styles.label}>Орендар</div>
-                          <div className={styles.value}>
-                            {tenantName}
-                            {typeof r?.tenant?.rating === "number"
-                              ? ` (⭐ ${r.tenant.rating})`
-                              : ""}
-                          </div>
-                        </div>
-                      ) : null}
-
-                      {r.message ? (
-                        <div className={styles.messageBox}>
-                          <div className={styles.label}>Повідомлення</div>
-                          <pre className={styles.message}>{r.message}</pre>
-                        </div>
-                      ) : null}
-                    </article>
-                  );
-                })}
-              </div>
-            )}
-          </>
-        )}
+        <div className={styles.shell}>{content}</div>
       </div>
     </div>
   );

@@ -1,0 +1,77 @@
+.form {
+  display: grid;
+  gap: 14px;
+}
+
+.label {
+  display: grid;
+  gap: 8px;
+  font-weight: 800;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.input {
+  height: 46px;
+  border-radius: 50px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  padding: 0 16px;
+  font-weight: 700;
+  background: #fff;
+  outline: none;
+
+  &:focus {
+    border-color: rgba(255, 90, 95, 0.7);
+    box-shadow: 0 0 0 4px rgba(255, 90, 95, 0.14);
+  }
+}
+
+.hint {
+  color: rgba(0, 0, 0, 0.55);
+  font-size: 14px;
+}
+
+.error {
+  color: #d4002a;
+  background: rgba(212, 0, 42, 0.08);
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-weight: 700;
+}
+
+.actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 6px;
+}
+
+.primaryBtn {
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 50px;
+  border: 0;
+  background: var(--color-primary);
+  color: #fff;
+  font-weight: 800;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
+
+.ghostBtn {
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 50px;
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  background: #fff;
+  font-weight: 800;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
+}
