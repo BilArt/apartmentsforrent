@@ -1,4 +1,3 @@
-// src/App.jsx
 import { useEffect, useState } from "react";
 import "./App.css";
 
@@ -11,6 +10,7 @@ import HomePage from "./pages/HomePage/HomePage";
 import ListingsPage from "./pages/ListingsPage/ListingsPage";
 import ListingDetailsPage from "./pages/ListingDetailsPage/ListingDetailsPage";
 import RequestsPage from "./pages/RequestsPage/RequestsPage";
+import ProfilePage from "./pages/ProfilePage/ProfilePage";
 
 import Header from "./components/Header/Header";
 import Footer from "./components/Footer/Footer";
@@ -28,13 +28,9 @@ function App() {
 
   const [activeModal, setActiveModal] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
-
   const [authLoading, setAuthLoading] = useState(true);
 
-  // можно оставить, но пока не используешь — не мешает
-  const [apiStatus, setApiStatus] = useState("checking...");
   const [bankIdMode, setBankIdMode] = useState(null);
-
   const [viewingListingId, setViewingListingId] = useState(null);
 
   const openSignIn = () => setActiveModal("signin");
@@ -48,12 +44,9 @@ function App() {
   };
 
   useEffect(() => {
-    fetchHealth()
-      .then(() => setApiStatus("API: OK"))
-      .catch(() => setApiStatus("API: FAIL"));
+    fetchHealth().catch(() => {});
   }, []);
 
-  // Инициализация сессии (важно: сначала authLoading=true)
   useEffect(() => {
     let alive = true;
 
@@ -123,7 +116,6 @@ function App() {
   const handleRequestViewing = (listingId) => {
     if (!listingId) return;
 
-    // если не проверили сессию — пусть сперва логин
     if (authLoading || !currentUser) {
       setViewingListingId(listingId);
       setActiveModal("signin");
@@ -152,6 +144,7 @@ function App() {
     <>
       <Header
         isAuthed={isAuthed}
+        currentUser={currentUser}
         onAddListing={handleAddListingClick}
         onSignIn={openSignIn}
         onSignUp={openRegister}
@@ -161,6 +154,18 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/listings" element={<ListingsPage />} />
+
+        <Route
+          path="/profile"
+          element={
+            <ProfilePage
+              currentUser={currentUser}
+              authLoading={authLoading}
+              onRequireAuth={openSignIn}
+              onLogout={handleLogout}
+            />
+          }
+        />
 
         <Route
           path="/listings/:listingId"
@@ -173,7 +178,7 @@ function App() {
           path="/requests"
           element={
             <RequestsPage
-              isAuthed={isAuthed}
+              currentUser={currentUser}
               authLoading={authLoading}
               onRequireAuth={openSignIn}
             />

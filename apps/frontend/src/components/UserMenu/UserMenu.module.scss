@@ -1,0 +1,141 @@
+.root {
+  position: relative;
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(8px);
+
+  border-radius: 999px;
+  padding: 10px 14px;
+
+  cursor: pointer;
+
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease;
+
+  &:hover {
+    border-color: rgba(0, 0, 0, 0.22);
+    background: rgba(255, 255, 255, 0.8);
+  }
+}
+
+.triggerIcon {
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+
+  display: grid;
+  place-items: center;
+
+  background: var(--color-primary);
+  color: #fff;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    color: currentColor;
+    stroke: currentColor;
+  }
+}
+
+.triggerText {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  white-space: nowrap;
+}
+
+.chevron,
+.chevronOpen {
+  display: grid;
+  place-items: center;
+
+  svg {
+    width: 16px;
+    height: 16px;
+    color: rgba(0, 0, 0, 0.55);
+    stroke: currentColor;
+  }
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+
+  width: 220px;
+
+  background: #fff;
+  border-radius: 16px;
+
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.12);
+
+  padding: 8px;
+  z-index: 50;
+}
+
+.item {
+  width: 100%;
+  text-align: left;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  padding: 10px 12px;
+  border-radius: 12px;
+
+  font-weight: 500;
+  color: var(--color-text-primary);
+  text-decoration: none;
+
+  border: none;
+  background: transparent;
+  cursor: pointer;
+
+  transition: background-color 140ms ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+  }
+}
+
+.itemDisabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+
+  &:hover {
+    background: transparent;
+  }
+}
+
+.soon {
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.divider {
+  height: 1px;
+  background: rgba(0, 0, 0, 0.08);
+  margin: 8px 6px;
+}
+
+.itemDanger {
+  color: #d12b2b;
+
+  &:hover {
+    background: rgba(209, 43, 43, 0.08);
+  }
+}

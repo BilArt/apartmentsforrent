@@ -53,7 +53,9 @@ function ListingForm({ onCreated }) {
       });
 
       if (res.status === 401) {
-        throw new Error("Ви не авторизовані. Зайдіть в обліковий запис і спробуйте знову.");
+        throw new Error(
+          "Ви не авторизовані. Зайдіть в обліковий запис і спробуйте знову."
+        );
       }
 
       const data = await res.json().catch(() => null);
@@ -92,40 +94,50 @@ function ListingForm({ onCreated }) {
         />
       </label>
 
-      <CityAutocomplete
-        value={city}
-        onChange={(v) => {
-          setCity(v);
-          if (error) setError(null);
-        }}
-        label="Населений пункт"
-      />
+      <div className={styles.field}>
+        <span>Населений пункт</span>
 
-      <label className={styles.field}>
-        <span>Адреса</span>
-        <input
-          type="text"
-          value={address}
-          onChange={(e) => {
-            setAddress(e.target.value);
+        <CityAutocomplete
+          value={city}
+          onChange={(v) => {
+            setCity(v);
             if (error) setError(null);
           }}
+          showLabel={false}
+          placeholder="Почніть вводити (місто/село/смт)…"
+          inputClassName={styles.textInput}
+          dropdownClassName={styles.cityDropdown}
+          optionClassName={styles.cityOption}
         />
-      </label>
+      </div>
 
-      <label className={styles.field}>
-        <span>Ціна (грн/міс)</span>
-        <input
-          type="number"
-          min="0"
-          step="1"
-          value={price}
-          onChange={(e) => {
-            setPrice(e.target.value);
-            if (error) setError(null);
-          }}
-        />
-      </label>
+      <div className={styles.row2}>
+        <label className={styles.field}>
+          <span>Адреса</span>
+          <input
+            type="text"
+            value={address}
+            onChange={(e) => {
+              setAddress(e.target.value);
+              if (error) setError(null);
+            }}
+          />
+        </label>
+
+        <label className={styles.field}>
+          <span>Ціна (грн/міс)</span>
+          <input
+            type="number"
+            min="0"
+            step="1"
+            value={price}
+            onChange={(e) => {
+              setPrice(e.target.value);
+              if (error) setError(null);
+            }}
+          />
+        </label>
+      </div>
 
       <label className={styles.field}>
         <span>Опис</span>

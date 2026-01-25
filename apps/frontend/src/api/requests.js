@@ -12,11 +12,12 @@ async function parseJson(res) {
 async function requestJson(path, options = {}) {
   const res = await fetch(`${API_BASE}${path}`, {
     credentials: "include",
+    ...options,
     headers: {
+      Accept: "application/json",
       ...(options.body ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {}),
     },
-    ...options,
   });
 
   const data = await parseJson(res);
@@ -25,7 +26,7 @@ async function requestJson(path, options = {}) {
     const msg =
       (data && (data.message || data.error)) ||
       `Request failed (${res.status})`;
-    throw new Error(Array.isArray(msg) ? msg.join(", ") : msg);
+    throw new Error(Array.isArray(msg) ? msg.join(", ") : String(msg));
   }
 
   return data;

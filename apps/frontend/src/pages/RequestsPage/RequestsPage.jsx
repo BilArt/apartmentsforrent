@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { requestsApi } from "../../api/requests";
+import { authApi } from "../../api/auth";
 import styles from "./RequestsPage.module.scss";
 
 function formatUaDateFromIso(iso) {
@@ -41,6 +42,14 @@ function statusTone(status) {
   }
 }
 
+function getPersonName(user) {
+  if (!user) return "—";
+  const first = user.firstName || "";
+  const last = user.lastName || "";
+  const s = `${first} ${last}`.trim();
+  return s || "—";
+}
+
 export default function RequestsPage({
   currentUser,
   authLoading,
@@ -48,7 +57,13 @@ export default function RequestsPage({
 }) {
   const navigate = useNavigate();
 
-  const isAuthed = !authLoading && Boolean(currentUser);
+  const [sessionUser, setSessionUser] = useState(null);
+  const [sessionLoading, setSessionLoading] = useState(false);
+
+  const effectiveUser = currentUser || sessionUser;
+  const effectiveAuthLoading = authLoading || sessionLoading;
+
+  const isAuthed = !effectiveAuthLoading && Boolean(effectiveUser);
 
   const [tab, setTab] = useState("incoming");
   const [loading, setLoading] = useState(false);
@@ -58,11 +73,14 @@ export default function RequestsPage({
   const [incoming, setIncoming] = useState([]);
 
   const [updatingIds, setUpdatingIds] = useState(() => new Set());
+  const [actionErrors, setActionErrors] = useState({});
+
+  const list = tab === "incoming" ? incoming : my;
 
   const incomingCount = incoming?.length || 0;
   const myCount = my?.length || 0;
 
-  const list = tab === "incoming" ? incoming : my;
+  const tabsDisabled = effectiveAuthLoading || !isAuthed;
 
   const refresh = async () => {
     setLoading(true);
@@ -78,7 +96,6 @@ export default function RequestsPage({
       setIncoming(Array.isArray(incomingData) ? incomingData : []);
     } catch (e) {
       const msg = e?.message || "Не вдалося завантажити заявки";
-
       if (/not authenticated|unauthorized|401/i.test(String(msg))) {
         setError("Схоже, твоя сесія закінчилась. Увійди ще раз.");
       } else {
@@ -91,16 +108,46 @@ export default function RequestsPage({
 
   useEffect(() => {
     if (authLoading) return;
+    if (currentUser) return;
 
+    let alive = true;
+
+    setSessionLoading(true);
+    authApi
+      .me()
+      .then((u) => {
+        if (!alive) return;
+        setSessionUser(u || null);
+      })
+      .catch(() => {
+        if (!alive) return;
+        setSessionUser(null);
+      })
+      .finally(() => {
+        if (!alive) return;
+        setSessionLoading(false);
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [authLoading, currentUser]);
+
+  useEffect(() => {
+    if (effectiveAuthLoading) return;
     if (!isAuthed) return;
-
     refresh();
-  }, [authLoading, isAuthed]);
+  }, [effectiveAuthLoading, isAuthed]);
 
   const onChangeStatus = async (requestId, newStatus) => {
     if (!requestId) return;
 
     setUpdatingIds((prev) => new Set(prev).add(requestId));
+    setActionErrors((prev) => {
+      const next = { ...prev };
+      delete next[requestId];
+      return next;
+    });
 
     try {
       const updated = await requestsApi.updateStatus(requestId, newStatus);
@@ -111,7 +158,8 @@ export default function RequestsPage({
       setIncoming((prev) => applyUpdated(prev));
       setMy((prev) => applyUpdated(prev));
     } catch (e) {
-      alert(e?.message || "Не вдалося оновити статус");
+      const msg = e?.message || "Не вдалося оновити статус";
+      setActionErrors((prev) => ({ ...prev, [requestId]: msg }));
     } finally {
       setUpdatingIds((prev) => {
         const next = new Set(prev);
@@ -121,101 +169,90 @@ export default function RequestsPage({
     }
   };
 
-  const canUseActions = tab === "incoming";
+  let content = null;
 
-  const content = useMemo(() => {
-    if (authLoading) {
-      return <div className={styles.state}>Перевіряємо сесію…</div>;
-    }
+  if (effectiveAuthLoading) {
+    content = <div className={styles.state}>Перевіряємо сесію…</div>;
+  } else if (!isAuthed) {
+    content = (
+      <div className={styles.state}>
+        <div className={styles.stateTitle}>Потрібна авторизація</div>
+        <div className={styles.stateText}>Увійди, щоб переглядати заявки.</div>
 
-    if (!isAuthed) {
-      return (
-        <div className={styles.state}>
-          <div className={styles.stateTitle}>Потрібна авторизація</div>
-          <div className={styles.stateText}>
-            Увійди, щоб переглядати заявки.
-          </div>
+        <div className={styles.stateActions}>
+          <button
+            type="button"
+            className={styles.primaryBtn}
+            onClick={() => onRequireAuth?.()}
+          >
+            Увійти
+          </button>
+          <button
+            type="button"
+            className={styles.secondaryBtn}
+            onClick={() => navigate("/")}
+          >
+            На головну
+          </button>
+        </div>
+      </div>
+    );
+  } else if (loading) {
+    content = <div className={styles.state}>Завантаження…</div>;
+  } else if (error) {
+    const isSessionExpired = /сесія.*закінчилась/i.test(error);
 
-          <div className={styles.stateActions}>
+    content = (
+      <div className={`${styles.state} ${styles.stateError}`}>
+        <div className={styles.stateTitle}>Помилка</div>
+        <div className={styles.stateText}>{error}</div>
+
+        <div className={styles.stateActions}>
+          <button type="button" className={styles.primaryBtn} onClick={refresh}>
+            Спробувати ще раз
+          </button>
+
+          {isSessionExpired ? (
             <button
               type="button"
-              className={styles.primaryBtn}
+              className={styles.secondaryBtn}
               onClick={() => onRequireAuth?.()}
             >
               Увійти
             </button>
-            <button
-              type="button"
-              className={styles.secondaryBtn}
-              onClick={() => navigate("/")}
-            >
-              На головну
-            </button>
-          </div>
+          ) : null}
         </div>
-      );
-    }
-
-    if (loading) return <div className={styles.state}>Завантаження…</div>;
-
-    if (error) {
-      return (
-        <div className={`${styles.state} ${styles.stateError}`}>
-          <div className={styles.stateTitle}>Помилка</div>
-          <div className={styles.stateText}>{error}</div>
-
-          <div className={styles.stateActions}>
-            <button
-              type="button"
-              className={styles.primaryBtn}
-              onClick={refresh}
-            >
-              Спробувати ще раз
-            </button>
-
-            {/сесія.*закінчилась/i.test(error) ? (
-              <button
-                type="button"
-                className={styles.secondaryBtn}
-                onClick={() => onRequireAuth?.()}
-              >
-                Увійти
-              </button>
-            ) : null}
-          </div>
+      </div>
+    );
+  } else if (!list.length) {
+    content = (
+      <div className={styles.state}>
+        <div className={styles.stateTitle}>Поки що порожньо</div>
+        <div className={styles.stateText}>
+          {tab === "incoming"
+            ? "У тебе ще немає вхідних заявок."
+            : "Ти ще не надсилав заявки на перегляд."}
         </div>
-      );
-    }
+      </div>
+    );
+  } else {
+    const canUseActions = tab === "incoming";
 
-    if (!list.length) {
-      return (
-        <div className={styles.state}>
-          <div className={styles.stateTitle}>Поки що порожньо</div>
-          <div className={styles.stateText}>
-            {tab === "incoming"
-              ? "У тебе ще немає вхідних заявок."
-              : "Ти ще не надсилав заявки на перегляд."}
-          </div>
-        </div>
-      );
-    }
-
-    return (
+    content = (
       <div className={styles.list}>
         {list.map((r) => {
           const listingTitle = r?.listing?.title || "Оголошення";
           const from = formatUaDateFromIso(r?.from);
           const to = formatUaDateFromIso(r?.to);
 
-          const tenantName =
-            r?.tenant?.firstName || r?.tenant?.lastName
-              ? `${r?.tenant?.firstName || ""} ${r?.tenant?.lastName || ""}`.trim()
-              : "—";
-
+          const tenantName = getPersonName(r?.tenant);
           const tenantRating =
             typeof r?.tenant?.rating === "number"
               ? ` (⭐ ${r.tenant.rating})`
               : "";
+
+          const landlordLabel =
+            r?.listing?.landlordName || r?.listing?.ownerId || "—";
 
           const isUpdating = updatingIds.has(r.id);
 
@@ -224,8 +261,7 @@ export default function RequestsPage({
           const isRejected = r.status === "REJECTED";
           const isCompleted = r.status === "COMPLETED";
 
-          const landlordLabel =
-            r?.listing?.landlordName || r?.listing?.ownerId || "—";
+          const actionError = actionErrors[r.id];
 
           return (
             <article key={r.id} className={styles.card}>
@@ -244,50 +280,60 @@ export default function RequestsPage({
                   </div>
                 </div>
 
-                {canUseActions && (
-                  <div className={styles.actions}>
-                    <button
-                      type="button"
-                      className={styles.primaryBtn}
-                      onClick={() => onChangeStatus(r.id, "APPROVED")}
-                      disabled={isUpdating || !isPending}
-                      title={
-                        !isPending ? "Доступно тільки для статусу PENDING" : ""
-                      }
-                    >
-                      Схвалити
-                    </button>
+                <div className={styles.topRight}>
+                  <button
+                    type="button"
+                    className={styles.ghostBtn}
+                    onClick={() => navigate(`/listings/${r.listingId}`)}
+                  >
+                    Відкрити оголошення
+                  </button>
 
-                    <button
-                      type="button"
-                      className={styles.ghostBtn}
-                      onClick={() => onChangeStatus(r.id, "REJECTED")}
-                      disabled={isUpdating || !isPending}
-                      title={
-                        !isPending ? "Доступно тільки для статусу PENDING" : ""
-                      }
-                    >
-                      Відхилити
-                    </button>
+                  {canUseActions ? (
+                    <div className={styles.actions}>
+                      <button
+                        type="button"
+                        className={styles.primaryBtn}
+                        onClick={() => onChangeStatus(r.id, "APPROVED")}
+                        disabled={isUpdating || !isPending}
+                        title={!isPending ? "Доступно тільки для PENDING" : ""}
+                      >
+                        Схвалити
+                      </button>
 
-                    <button
-                      type="button"
-                      className={styles.secondaryBtn}
-                      onClick={() => onChangeStatus(r.id, "COMPLETED")}
-                      disabled={
-                        isUpdating || isRejected || isCompleted || !isApproved
-                      }
-                      title={
-                        !isApproved
-                          ? "Завершити можна тільки після схвалення"
-                          : ""
-                      }
-                    >
-                      Завершити
-                    </button>
-                  </div>
-                )}
+                      <button
+                        type="button"
+                        className={styles.ghostBtn}
+                        onClick={() => onChangeStatus(r.id, "REJECTED")}
+                        disabled={isUpdating || !isPending}
+                        title={!isPending ? "Доступно тільки для PENDING" : ""}
+                      >
+                        Відхилити
+                      </button>
+
+                      <button
+                        type="button"
+                        className={styles.secondaryBtn}
+                        onClick={() => onChangeStatus(r.id, "COMPLETED")}
+                        disabled={
+                          isUpdating || isRejected || isCompleted || !isApproved
+                        }
+                        title={
+                          !isApproved
+                            ? "Завершити можна тільки після схвалення"
+                            : ""
+                        }
+                      >
+                        Завершити
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
               </div>
+
+              {actionError ? (
+                <div className={styles.inlineError}>{actionError}</div>
+              ) : null}
 
               <div className={styles.metaGrid}>
                 <div className={styles.metaItem}>
@@ -316,19 +362,7 @@ export default function RequestsPage({
         })}
       </div>
     );
-  }, [
-    authLoading,
-    isAuthed,
-    loading,
-    error,
-    list,
-    tab,
-    updatingIds,
-    navigate,
-    onRequireAuth,
-  ]);
-
-  const tabsDisabled = authLoading || !isAuthed;
+  }
 
   return (
     <div className={styles.page}>
@@ -336,23 +370,35 @@ export default function RequestsPage({
         <div className={styles.headRow}>
           <h1 className={styles.h1}>Заявки</h1>
 
-          <div className={styles.tabs}>
-            <button
-              type="button"
-              className={`${styles.tabBtn} ${tab === "my" ? styles.tabActive : ""}`}
-              onClick={() => setTab("my")}
-              disabled={tabsDisabled}
-            >
-              Мої заявки ({myCount})
-            </button>
+          <div className={styles.headActions}>
+            <div className={styles.tabs}>
+              <button
+                type="button"
+                className={`${styles.tabBtn} ${tab === "my" ? styles.tabActive : ""}`}
+                onClick={() => setTab("my")}
+                disabled={tabsDisabled}
+              >
+                Мої ({myCount})
+              </button>
+
+              <button
+                type="button"
+                className={`${styles.tabBtn} ${tab === "incoming" ? styles.tabActive : ""}`}
+                onClick={() => setTab("incoming")}
+                disabled={tabsDisabled}
+              >
+                Вхідні ({incomingCount})
+              </button>
+            </div>
 
             <button
               type="button"
-              className={`${styles.tabBtn} ${tab === "incoming" ? styles.tabActive : ""}`}
-              onClick={() => setTab("incoming")}
-              disabled={tabsDisabled}
+              className={styles.secondaryBtn}
+              onClick={refresh}
+              disabled={tabsDisabled || loading}
+              title="Оновити список"
             >
-              Вхідні ({incomingCount})
+              Оновити
             </button>
           </div>
         </div>
