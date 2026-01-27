@@ -21,7 +21,7 @@ export type Listing = {
 
 export const listings: Listing[] = [
   {
-    id: 'l1',
+    id: '8a1b2c3d-1111-2222-3333-444455556666',
     title: 'Сонячна студія біля метро Лукʼянівська',
     city: {
       geonameId: 703448,
@@ -39,7 +39,7 @@ export const listings: Listing[] = [
     ownerId: 'seed-owner-1',
   },
   {
-    id: 'l2',
+    id: '9b2c3d4e-7777-8888-9999-000011112222',
     title: 'Львів: 1-кімнатна біля Оперного',
     city: {
       geonameId: 702550,

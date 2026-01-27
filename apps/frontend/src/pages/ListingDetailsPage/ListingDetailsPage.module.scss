@@ -1,3 +1,4 @@
+/* src/pages/ListingDetailsPage/ListingDetailsPage.module.scss */
 .page {
   padding: 28px 0 80px;
 }
@@ -204,6 +205,11 @@
   &:hover {
     background-color: #ff7377;
   }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+  }
 }
 
 .secondaryBtn {
@@ -241,7 +247,6 @@
   }
 }
 
-/* responsive */
 @media (max-width: 980px) {
   .layout {
     grid-template-columns: 1fr;
@@ -254,4 +259,78 @@
   .thumbs {
     grid-template-columns: repeat(4, 1fr);
   }
+}
+
+.requestStatus {
+  margin-top: 12px;
+  padding: 12px 12px;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.requestStatusLabel {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(0, 0, 0, 0.55);
+  margin-bottom: 6px;
+}
+
+.requestStatusValue {
+  font-weight: 900;
+  color: rgba(0, 0, 0, 0.85);
+}
+
+.requestStatusValueRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.requestStatusHint {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.requestStatusValueMuted {
+  font-weight: 800;
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.requestStatusValueError {
+  font-weight: 800;
+  color: #b00020;
+}
+
+.badge {
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 900;
+  font-size: 13px;
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.7);
+}
+
+.badgePending {
+  background: rgba(255, 90, 95, 0.14);
+  color: rgba(255, 90, 95, 1);
+}
+
+.badgeApproved {
+  background: rgba(0, 160, 90, 0.14);
+  color: rgba(0, 140, 80, 1);
+}
+
+.badgeRejected {
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.55);
+}
+
+.badgeCompleted {
+  background: rgba(30, 90, 200, 0.14);
+  color: rgba(30, 90, 200, 1);
 }

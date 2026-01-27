@@ -126,6 +126,15 @@ export default function Header({
                     <button
                       type="button"
                       className={styles.menuItem}
+                      onClick={() => go("/my-listings")}
+                      role="menuitem"
+                    >
+                      Мої оголошення
+                    </button>
+
+                    <button
+                      type="button"
+                      className={styles.menuItem}
                       onClick={() => go("/requests")}
                       role="menuitem"
                     >

@@ -1,6 +1,10 @@
+// src/pages/ListingDetailsPage/ListingDetailsPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+
 import { listingsApi } from "../../api/listings";
+import { requestsApi } from "../../api/requests";
+
 import styles from "./ListingDetailsPage.module.scss";
 
 function getCityLabel(city) {
@@ -29,22 +33,67 @@ function getImages(listing) {
 
   const resolveSrc = (src) => {
     if (!src) return null;
-
     if (/^https?:\/\//i.test(src)) return src;
-
     if (!src.startsWith("/")) return `/media/listings/${src}`;
-
     return src;
   };
 
   const resolved = mapped.map(resolveSrc).filter(Boolean);
 
   if (!resolved.length) return ["/media/listings/placeholder-1.jpg"];
-
   return resolved;
 }
 
-export default function ListingDetailsPage({ onRequestViewing }) {
+function getListingOwnerId(listing) {
+  if (!listing || typeof listing !== "object") return null;
+
+  const candidates = [
+    listing.ownerId,
+    listing.landlordId,
+    listing.userId,
+    listing.createdById,
+    listing.owner?.id,
+    listing.landlord?.id,
+    listing.user?.id,
+  ];
+
+  const found = candidates.find(
+    (v) => v !== undefined && v !== null && v !== ""
+  );
+  return found ? String(found) : null;
+}
+
+function statusLabel(status) {
+  switch (status) {
+    case "PENDING":
+      return "Очікує";
+    case "APPROVED":
+      return "Схвалено";
+    case "REJECTED":
+      return "Відхилено";
+    case "COMPLETED":
+      return "Завершено";
+    default:
+      return status || "—";
+  }
+}
+
+function statusTone(status) {
+  switch (status) {
+    case "PENDING":
+      return styles.badgePending;
+    case "APPROVED":
+      return styles.badgeApproved;
+    case "REJECTED":
+      return styles.badgeRejected;
+    case "COMPLETED":
+      return styles.badgeCompleted;
+    default:
+      return "";
+  }
+}
+
+export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
   const { listingId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -54,6 +103,10 @@ export default function ListingDetailsPage({ onRequestViewing }) {
   const [error, setError] = useState("");
 
   const [activeImg, setActiveImg] = useState(0);
+
+  const [myReqStatus, setMyReqStatus] = useState("idle");
+  const [myReqError, setMyReqError] = useState("");
+  const [myRequest, setMyRequest] = useState(null);
 
   useEffect(() => {
     let alive = true;
@@ -91,6 +144,67 @@ export default function ListingDetailsPage({ onRequestViewing }) {
   const images = useMemo(() => getImages(item), [item]);
   const mainImage = images[Math.min(activeImg, images.length - 1)];
 
+  const isOwnListing = useMemo(() => {
+    const uid = currentUser?.id ? String(currentUser.id) : null;
+    const oid = getListingOwnerId(item);
+    if (!uid || !oid) return false;
+    return uid === oid;
+  }, [currentUser, item]);
+
+  const canCheckMyRequest = Boolean(currentUser?.id) && Boolean(item?.id);
+
+  useEffect(() => {
+    if (!canCheckMyRequest) return;
+    if (isOwnListing) return;
+
+    let alive = true;
+
+    (async () => {
+      try {
+        setMyReqStatus("loading");
+        setMyReqError("");
+        setMyRequest(null);
+
+        const myList = await requestsApi.getMy();
+        if (!alive) return;
+
+        const arr = Array.isArray(myList) ? myList : [];
+        const found = arr.find((r) => String(r?.listingId) === String(item.id));
+
+        setMyRequest(found || null);
+        setMyReqStatus("ok");
+      } catch (e) {
+        if (!alive) return;
+
+        const msg = e?.message || "Не вдалося перевірити заявку";
+        // если сессия умерла — просто считаем, что "заявки нет"
+        if (/not authenticated|unauthorized|401/i.test(String(msg))) {
+          setMyRequest(null);
+          setMyReqStatus("ok");
+          setMyReqError("");
+          return;
+        }
+
+        setMyReqStatus("error");
+        setMyReqError(msg);
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [canCheckMyRequest, isOwnListing, item?.id]);
+
+  const hasMyRequest = Boolean(myRequest?.id);
+  const myRequestLabel = hasMyRequest ? statusLabel(myRequest.status) : null;
+
+  const goToRequests = () => {
+    if (!item?.id) return;
+    navigate(
+      `/requests?tab=my&listingId=${encodeURIComponent(String(item.id))}`
+    );
+  };
+
   return (
     <div className={styles.page}>
       <div className="container">
@@ -114,7 +228,6 @@ export default function ListingDetailsPage({ onRequestViewing }) {
 
         {status === "ok" && item && (
           <div className={styles.layout}>
-            {/* LEFT */}
             <div className={styles.left}>
               <div className={styles.galleryCard}>
                 <div className={styles.galleryMain}>
@@ -224,27 +337,81 @@ export default function ListingDetailsPage({ onRequestViewing }) {
               </div>
             </div>
 
-            {/* RIGHT */}
             <aside className={styles.right}>
               <div className={styles.sideCard}>
                 <div className={styles.sideTitle}>Швидкі дії</div>
 
-                <button type="button" className={styles.primaryBtn}>
+                <button type="button" className={styles.primaryBtn} disabled>
                   Написати орендодавцю
                 </button>
 
-                <button
-                  type="button"
-                  className={styles.secondaryBtn}
-                  onClick={() => onRequestViewing?.(item?.id)}
-                  disabled={!item?.id}
-                >
-                  Запросити перегляд
-                </button>
+                {!isOwnListing ? (
+                  <>
+                    {currentUser && (
+                      <div className={styles.requestStatus}>
+                        <div className={styles.requestStatusLabel}>
+                          Статус заявки
+                        </div>
 
-                <div className={styles.sideNote}>
-                  (Поки це заглушки. Далі підключимо чат/заявку.)
-                </div>
+                        {myReqStatus === "loading" ? (
+                          <div className={styles.requestStatusValue}>
+                            Перевіряємо…
+                          </div>
+                        ) : myReqStatus === "error" ? (
+                          <div className={styles.requestStatusValueError}>
+                            {myReqError || "Помилка перевірки"}
+                          </div>
+                        ) : hasMyRequest ? (
+                          <div className={styles.requestStatusValueRow}>
+                            <span
+                              className={`${styles.badge} ${statusTone(
+                                myRequest?.status
+                              )}`}
+                            >
+                              {myRequestLabel}
+                            </span>
+                            <span className={styles.requestStatusHint}>
+                              Твоя заявка на перегляд
+                            </span>
+                          </div>
+                        ) : (
+                          <div className={styles.requestStatusValueMuted}>
+                            Заявки ще немає
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {hasMyRequest ? (
+                      <button
+                        type="button"
+                        className={styles.secondaryBtn}
+                        onClick={goToRequests}
+                        disabled={!item?.id}
+                      >
+                        Перейти до заявок
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.secondaryBtn}
+                        onClick={() => onRequestViewing?.(item?.id)}
+                        disabled={!item?.id}
+                      >
+                        Запросити перегляд
+                      </button>
+                    )}
+
+                    <div className={styles.sideNote}>
+                      (Чат підключимо пізніше. Зараз головне — заявка і статус.)
+                    </div>
+                  </>
+                ) : (
+                  <div className={styles.sideNote}>
+                    Це ваше оголошення — ви не можете надсилати запит на
+                    перегляд самому собі.
+                  </div>
+                )}
               </div>
 
               <div className={styles.sideCard}>

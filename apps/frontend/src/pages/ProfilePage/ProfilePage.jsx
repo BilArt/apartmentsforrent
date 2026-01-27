@@ -109,6 +109,15 @@ export default function ProfilePage({
                   >
                     Перейти до оголошень
                   </button>
+
+                  <button
+                    type="button"
+                    className={styles.secondaryBtn}
+                    onClick={() => onLogout?.()}
+                    title="Вийти з акаунта"
+                  >
+                    Вийти
+                  </button>
                 </div>
               </div>
 

@@ -332,3 +332,48 @@
     justify-content: flex-start;
   }
 }
+
+.filterRow {
+  margin: 6px 0 14px;
+  max-width: 900px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.filterChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+
+  min-height: 34px;
+  padding: 0 10px 0 12px;
+  border-radius: 999px;
+
+  background: rgba(0, 0, 0, 0.04);
+  color: rgba(0, 0, 0, 0.65);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.filterChipClose {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  border: 0;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.06);
+  color: rgba(0, 0, 0, 0.7);
+  font-weight: 900;
+  line-height: 1;
+
+  transition:
+    background-color 150ms ease,
+    transform 120ms ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.1);
+    transform: translateY(-1px);
+  }
+}

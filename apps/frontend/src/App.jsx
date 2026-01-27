@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import "./App.css";
 
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 
 import { authApi } from "./api/auth";
 import { fetchHealth } from "./api/health";
@@ -9,6 +9,7 @@ import { fetchHealth } from "./api/health";
 import HomePage from "./pages/HomePage/HomePage";
 import ListingsPage from "./pages/ListingsPage/ListingsPage";
 import ListingDetailsPage from "./pages/ListingDetailsPage/ListingDetailsPage";
+import MyListingsPage from "./pages/MyListingsPage/MyListingsPage";
 import RequestsPage from "./pages/RequestsPage/RequestsPage";
 import ProfilePage from "./pages/ProfilePage/ProfilePage";
 
@@ -23,8 +24,11 @@ import ListingForm from "./components/ListingForm/ListingForm";
 
 import ViewingRequestForm from "./components/ViewingRequestForm/ViewingRequestForm";
 
+import RequireAuth from "./components/RequireAuth/RequireAuth";
+
 function App() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [activeModal, setActiveModal] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
@@ -33,7 +37,13 @@ function App() {
   const [bankIdMode, setBankIdMode] = useState(null);
   const [viewingListingId, setViewingListingId] = useState(null);
 
-  const openSignIn = () => setActiveModal("signin");
+  // куда вернуться после успешного логина
+  const [pendingNavigateTo, setPendingNavigateTo] = useState(null);
+
+  const openSignIn = (opts = {}) => {
+    if (opts?.from) setPendingNavigateTo(opts.from);
+    setActiveModal("signin");
+  };
   const openRegister = () => setActiveModal("register");
   const openAddListing = () => setActiveModal("addListing");
 
@@ -61,8 +71,7 @@ function App() {
         if (!alive) return;
         setCurrentUser(null);
       } finally {
-        if (!alive) return;
-        setAuthLoading(false);
+        if (alive) setAuthLoading(false);
       }
     })();
 
@@ -93,6 +102,7 @@ function App() {
     } finally {
       setCurrentUser(null);
       setAuthLoading(false);
+      setPendingNavigateTo(null);
       closeModal();
       navigate("/");
     }
@@ -102,7 +112,7 @@ function App() {
     if (authLoading) return;
 
     if (!currentUser) {
-      openSignIn();
+      openSignIn({ from: location });
       return;
     }
     openAddListing();
@@ -118,7 +128,7 @@ function App() {
 
     if (authLoading || !currentUser) {
       setViewingListingId(listingId);
-      setActiveModal("signin");
+      openSignIn({ from: location });
       return;
     }
 
@@ -130,12 +140,24 @@ function App() {
     setCurrentUser(user);
     setAuthLoading(false);
 
+    // если логин был ради запроса на просмотр — сразу открываем форму
     if (viewingListingId) {
       setActiveModal("viewing");
       return;
     }
 
     closeModal();
+
+    // вернуть на страницу, откуда попросили авторизацию
+    if (pendingNavigateTo?.pathname) {
+      const to = `${pendingNavigateTo.pathname}${pendingNavigateTo.search || ""}`;
+      setPendingNavigateTo(null);
+      navigate(to, { replace: true });
+      return;
+    }
+
+    // фоллбек
+    setPendingNavigateTo(null);
   };
 
   const isAuthed = !authLoading && Boolean(currentUser);
@@ -146,7 +168,7 @@ function App() {
         isAuthed={isAuthed}
         currentUser={currentUser}
         onAddListing={handleAddListingClick}
-        onSignIn={openSignIn}
+        onSignIn={() => openSignIn({ from: location })}
         onSignUp={openRegister}
         onLogout={handleLogout}
       />
@@ -158,29 +180,76 @@ function App() {
         <Route
           path="/profile"
           element={
-            <ProfilePage
+            <RequireAuth
               currentUser={currentUser}
               authLoading={authLoading}
-              onRequireAuth={openSignIn}
-              onLogout={handleLogout}
-            />
+              onRequireAuth={() => openSignIn({ from: location })}
+              fallback={
+                <div className="container" style={{ padding: "28px 0" }}>
+                  Перевіряємо сесію…
+                </div>
+              }
+            >
+              <ProfilePage
+                currentUser={currentUser}
+                authLoading={authLoading}
+                onRequireAuth={() => openSignIn({ from: location })}
+                onLogout={handleLogout}
+              />
+            </RequireAuth>
           }
         />
 
         <Route
-          path="/listings/:listingId"
+          path="/my-listings"
           element={
-            <ListingDetailsPage onRequestViewing={handleRequestViewing} />
+            <RequireAuth
+              currentUser={currentUser}
+              authLoading={authLoading}
+              onRequireAuth={() => openSignIn({ from: location })}
+              fallback={
+                <div className="container" style={{ padding: "28px 0" }}>
+                  Перевіряємо сесію…
+                </div>
+              }
+            >
+              <MyListingsPage
+                currentUser={currentUser}
+                authLoading={authLoading}
+                onRequireAuth={() => openSignIn({ from: location })}
+              />
+            </RequireAuth>
           }
         />
 
         <Route
           path="/requests"
           element={
-            <RequestsPage
+            <RequireAuth
               currentUser={currentUser}
               authLoading={authLoading}
-              onRequireAuth={openSignIn}
+              onRequireAuth={() => openSignIn({ from: location })}
+              fallback={
+                <div className="container" style={{ padding: "28px 0" }}>
+                  Перевіряємо сесію…
+                </div>
+              }
+            >
+              <RequestsPage
+                currentUser={currentUser}
+                authLoading={authLoading}
+                onRequireAuth={() => openSignIn({ from: location })}
+              />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/listings/:listingId"
+          element={
+            <ListingDetailsPage
+              currentUser={currentUser}
+              onRequestViewing={handleRequestViewing}
             />
           }
         />
@@ -202,7 +271,7 @@ function App() {
         <Modal title="Реєстрація" onClose={closeModal}>
           <RegisterForm
             onRegistered={handleRegistered}
-            onGoSignIn={openSignIn}
+            onGoSignIn={() => openSignIn({ from: location })}
             onBankId={openBankIdRegister}
           />
         </Modal>
@@ -236,6 +305,14 @@ function App() {
               }
 
               closeModal();
+
+              if (pendingNavigateTo?.pathname) {
+                const to = `${pendingNavigateTo.pathname}${pendingNavigateTo.search || ""}`;
+                setPendingNavigateTo(null);
+                navigate(to, { replace: true });
+              } else {
+                setPendingNavigateTo(null);
+              }
             }}
           />
         </Modal>
