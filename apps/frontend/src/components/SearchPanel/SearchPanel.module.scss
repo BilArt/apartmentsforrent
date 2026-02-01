@@ -68,7 +68,6 @@
   }
 }
 
-/* ranges */
 .range {
   display: flex;
   align-items: center;
@@ -89,7 +88,6 @@
   opacity: 0.6;
 }
 
-/* rooms */
 .rooms {
   height: 44px;
   display: flex;
@@ -206,7 +204,6 @@
   color: var(--color-secondary);
 }
 
-/* calendar wrapper so it sits correctly */
 .calendarWrap {
   position: absolute;
   top: calc(100% + 14px);

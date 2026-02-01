@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import styles from "./ListingCard.module.scss";
 import { Link, useLocation } from "react-router-dom";
 
@@ -38,11 +38,8 @@ function getCoverImage(listing) {
 
   const resolveSrc = (src) => {
     if (!src) return null;
-
     if (/^https?:\/\//i.test(src)) return src;
-
     if (src.startsWith("/")) return src;
-
     return `/media/listings/${src}`;
   };
 
@@ -52,36 +49,33 @@ function getCoverImage(listing) {
   return "/media/listings/placeholder-1.jpg";
 }
 
-export default function ListingCard({ listing, onToggleFav }) {
+export default function ListingCard({ listing, onToggleFav, canFavorite }) {
   const location = useLocation();
-  const cityLabel = useMemo(() => getCityLabel(listing.city), [listing.city]);
-  const [fav, setFav] = useState(Boolean(listing.isFavorite));
 
-  const priceLabel = `${formatPrice(listing.price)} грн/міс.`;
+  const cityLabel = useMemo(() => getCityLabel(listing?.city), [listing?.city]);
+  const fav = Boolean(listing?.isFavorite);
+
+  const priceLabel = `${formatPrice(listing?.price)} грн/міс.`;
   const cover = getCoverImage(listing);
 
-  const districtLabel = listing.districtLabel || listing.district || null;
-  const availableFromLabel =
-    listing.availableFromLabel || listing.availableFrom || null;
-  const areaLabel = listing.area ? `${listing.area} м2` : null;
+  const availableFromLabel = listing?.availableFrom || "—";
+  const areaLabel =
+    typeof listing?.area === "number" ? `${listing.area} м2` : "—";
   const roomsLabel =
-    typeof listing.rooms === "number" && listing.rooms > 0
-      ? String(listing.rooms)
-      : null;
+    typeof listing?.rooms === "number" ? String(listing.rooms) : "—";
 
-  const title = listing.title || listing.address || "Без назви";
-  const addressLine = listing.address || "";
+  const title = listing?.title || listing?.address || "Без назви";
+  const addressLine = listing?.address || "";
 
   const toggleFav = (e) => {
     e.preventDefault();
     e.stopPropagation();
-    setFav((v) => !v);
-    onToggleFav?.(listing);
+    onToggleFav?.(listing?.id);
   };
 
   return (
     <Link
-      to={`/listings/${listing.id}`}
+      to={`/listings/${listing?.id}`}
       state={{ from: location }}
       className={styles.linkWrap}
       aria-label={`Open listing: ${title}`}
@@ -103,14 +97,21 @@ export default function ListingCard({ listing, onToggleFav }) {
               <div className={styles.city}>{cityLabel}</div>
             </div>
 
-            <button
-              type="button"
-              className={`${styles.favBtn} ${fav ? styles.favActive : ""}`}
-              onClick={toggleFav}
-              aria-label={fav ? "Remove from favorites" : "Add to favorites"}
-            >
-              <FavoriteIcon className={styles.heartIcon} />
-            </button>
+            {/* ❤️ Кнопка ТОЛЬКО если можно */}
+            {canFavorite && (
+              <button
+                type="button"
+                className={`${styles.favBtn} ${
+                  fav ? styles.favActive : ""
+                }`}
+                onClick={toggleFav}
+                aria-label={
+                  fav ? "Remove from favorites" : "Add to favorites"
+                }
+              >
+                <FavoriteIcon className={styles.heartIcon} />
+              </button>
+            )}
           </div>
 
           <div className={styles.price}>{priceLabel}</div>
@@ -119,31 +120,24 @@ export default function ListingCard({ listing, onToggleFav }) {
 
           <div className={styles.metaGrid}>
             <div className={styles.metaItem}>
-              <div className={styles.metaLabel}>Район</div>
-              <div className={styles.metaValue}>{districtLabel ?? "—"}</div>
-            </div>
-
-            <div className={styles.metaItem}>
               <div className={styles.metaLabel}>Доступно від</div>
               <div className={styles.metaValue}>
-                {availableFromLabel ?? "—"}
+                {availableFromLabel}
               </div>
             </div>
 
             <div className={styles.metaItem}>
               <div className={styles.metaLabel}>Метраж</div>
-              <div className={styles.metaValue}>{areaLabel ?? "—"}</div>
+              <div className={styles.metaValue}>{areaLabel}</div>
             </div>
 
             <div className={styles.metaItem}>
-              <div className={styles.metaLabel}>Кількість кімнат</div>
-              <div className={styles.metaValue}>{roomsLabel ?? "—"}</div>
+              <div className={styles.metaLabel}>Кімнат</div>
+              <div className={styles.metaValue}>{roomsLabel}</div>
             </div>
           </div>
 
-          {addressLine ? (
-            <div className={styles.address}>{addressLine}</div>
-          ) : null}
+          <div className={styles.address}>{addressLine || " "}</div>
         </div>
       </article>
     </Link>

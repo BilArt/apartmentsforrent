@@ -12,6 +12,7 @@ import ListingDetailsPage from "./pages/ListingDetailsPage/ListingDetailsPage";
 import MyListingsPage from "./pages/MyListingsPage/MyListingsPage";
 import RequestsPage from "./pages/RequestsPage/RequestsPage";
 import ProfilePage from "./pages/ProfilePage/ProfilePage";
+import FavoritesPage from "./pages/FavoritesPage/FavoritesPage";
 
 import Header from "./components/Header/Header";
 import Footer from "./components/Footer/Footer";
@@ -37,7 +38,6 @@ function App() {
   const [bankIdMode, setBankIdMode] = useState(null);
   const [viewingListingId, setViewingListingId] = useState(null);
 
-  // куда вернуться после успешного логина
   const [pendingNavigateTo, setPendingNavigateTo] = useState(null);
 
   const openSignIn = (opts = {}) => {
@@ -140,7 +140,6 @@ function App() {
     setCurrentUser(user);
     setAuthLoading(false);
 
-    // если логин был ради запроса на просмотр — сразу открываем форму
     if (viewingListingId) {
       setActiveModal("viewing");
       return;
@@ -148,7 +147,6 @@ function App() {
 
     closeModal();
 
-    // вернуть на страницу, откуда попросили авторизацию
     if (pendingNavigateTo?.pathname) {
       const to = `${pendingNavigateTo.pathname}${pendingNavigateTo.search || ""}`;
       setPendingNavigateTo(null);
@@ -156,7 +154,6 @@ function App() {
       return;
     }
 
-    // фоллбек
     setPendingNavigateTo(null);
   };
 
@@ -175,7 +172,14 @@ function App() {
 
       <Routes>
         <Route path="/" element={<HomePage />} />
-        <Route path="/listings" element={<ListingsPage />} />
+        <Route
+          path="/listings"
+          element={
+            <ListingsPage currentUser={currentUser} authLoading={authLoading} />
+          }
+        />
+
+        <Route path="/favorites" element={<FavoritesPage />} />
 
         <Route
           path="/profile"

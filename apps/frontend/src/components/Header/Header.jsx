@@ -28,8 +28,9 @@ export default function Header({
     if (!menuOpen) return;
 
     const onDown = (e) => {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(e.target)) setMenuOpen(false);
+      const el = menuRef.current;
+      if (!el) return;
+      if (!el.contains(e.target)) setMenuOpen(false);
     };
 
     document.addEventListener("mousedown", onDown);
@@ -130,6 +131,15 @@ export default function Header({
                       role="menuitem"
                     >
                       Мої оголошення
+                    </button>
+
+                    <button
+                      type="button"
+                      className={styles.menuItem}
+                      onClick={() => go("/listings?fav=1")}
+                      role="menuitem"
+                    >
+                      Обране
                     </button>
 
                     <button

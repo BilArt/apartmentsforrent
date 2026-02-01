@@ -42,4 +42,17 @@ export const listingsApi = {
       body: JSON.stringify(payload),
     });
   },
+
+  update(id, payload) {
+    return request(`/listings/${encodeURIComponent(String(id))}`, {
+      method: "PATCH",
+      body: JSON.stringify(payload),
+    });
+  },
+
+  remove(id) {
+    return request(`/listings/${encodeURIComponent(String(id))}`, {
+      method: "DELETE",
+    });
+  },
 };

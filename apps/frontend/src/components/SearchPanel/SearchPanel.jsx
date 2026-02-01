@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState, useReducer } from "react";
+import { useSearchParams } from "react-router-dom";
 import styles from "./SearchPanel.module.scss";
 
 import CalendarDropdown from "../CalendarDropdown/CalendarDropdown";
@@ -8,13 +8,6 @@ import calStyles from "../CalendarDropdown/CalendarDropdown.module.scss";
 import CalendarIcon from "../../assets/svg/calendar.svg?react";
 import ChevronDownIcon from "../../assets/svg/raw.svg?react";
 import ClearIcon from "../../assets/svg/clear.svg?react";
-
-const DISTRICTS = [
-  { id: "", label: "Район міста" },
-  { id: "shev", label: "Шевченківський" },
-  { id: "pech", label: "Печерський" },
-  { id: "sol", label: "Солом'янський" },
-];
 
 const BUILDING_TYPES = [
   { id: "", label: "Обрати" },
@@ -51,20 +44,63 @@ function sameDay(a, b) {
   );
 }
 function parseISODate(s) {
-  // YYYY-MM-DD
   if (!s) return null;
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
   if (!m) return null;
+
   const y = Number(m[1]);
   const mo = Number(m[2]) - 1;
   const da = Number(m[3]);
+
   const d = new Date(y, mo, da);
   return startOfDay(d);
 }
 
+function readInitial(sp) {
+  const getBool = (k) => sp.get(k) === "1";
+  const toStr = (v) => String(v ?? "");
+
+  const from = sp.get("from");
+  const fromDate = parseISODate(sp.get("fromDate"));
+  const today = startOfDay(new Date());
+
+  let whenDate = null;
+  if (from === "today") whenDate = today;
+  else if (fromDate) whenDate = fromDate;
+
+  return {
+    city: toStr(sp.get("city") || ""),
+    whenDate,
+
+    buildingType: toStr(sp.get("buildingType") || ""),
+    rentType: toStr(sp.get("rentType") || ""),
+
+    priceFrom: toStr(sp.get("priceFrom") || ""),
+    priceTo: toStr(sp.get("priceTo") || ""),
+    areaFrom: toStr(sp.get("areaFrom") || ""),
+    areaTo: toStr(sp.get("areaTo") || ""),
+
+    rooms: Number(sp.get("rooms") || 0),
+    moreOpen: getBool("more"),
+
+    kitchen: getBool("kitchen"),
+    pets: getBool("pets"),
+    lift: getBool("lift"),
+    parking: getBool("parking"),
+    furnished: getBool("furnished"),
+    balcony: getBool("balcony"),
+    storage: getBool("storage"),
+  };
+}
+
+function formReducer(state, action) {
+  if (action.type === "replace") return action.payload;
+  if (action.type === "patch") return { ...state, ...action.payload };
+  return state;
+}
+
 export default function SearchPanel() {
-  const navigate = useNavigate();
-  const [sp] = useSearchParams();
+  const [sp, setSp] = useSearchParams();
 
   const [openId, setOpenId] = useState(null);
   const dropdownRefs = useRef(new Map());
@@ -78,13 +114,8 @@ export default function SearchPanel() {
   useEffect(() => {
     const onDown = (e) => {
       if (!openId) return;
-
       const node = dropdownRefs.current.get(openId);
-      if (!node) {
-        setOpenId(null);
-        return;
-      }
-
+      if (!node) return setOpenId(null);
       if (!node.contains(e.target)) setOpenId(null);
     };
 
@@ -102,146 +133,86 @@ export default function SearchPanel() {
 
   const toggle = (id) => setOpenId((prev) => (prev === id ? null : id));
 
-  const initial = useMemo(() => {
-    const getBool = (k) => sp.get(k) === "1";
-    const toStr = (v) => String(v ?? "");
-
-    // новый формат:
-    // from=today OR fromDate=YYYY-MM-DD
-    const from = sp.get("from");
-    const fromDate = parseISODate(sp.get("fromDate"));
-    const today = startOfDay(new Date());
-
-    let whenDate = null;
-    if (from === "today") whenDate = today;
-    else if (fromDate) whenDate = fromDate;
-
-    return {
-      city: toStr(sp.get("city") || ""),
-      district: toStr(sp.get("district") || ""),
-      whenDate,
-      buildingType: toStr(sp.get("buildingType") || ""),
-      rentType: toStr(sp.get("rentType") || ""),
-
-      priceFrom: toStr(sp.get("priceFrom") || ""),
-      priceTo: toStr(sp.get("priceTo") || ""),
-      areaFrom: toStr(sp.get("areaFrom") || ""),
-      areaTo: toStr(sp.get("areaTo") || ""),
-
-      rooms: Number(sp.get("rooms") || 0),
-      moreOpen: getBool("more"),
-
-      kitchen: getBool("kitchen"),
-      pets: getBool("pets"),
-      lift: getBool("lift"),
-      parking: getBool("parking"),
-      furnished: getBool("furnished"),
-      balcony: getBool("balcony"),
-      storage: getBool("storage"),
-    };
-  }, [sp]);
-
-  const [city, setCity] = useState(initial.city);
-  const [district, setDistrict] = useState(initial.district);
-  const [whenDate, setWhenDate] = useState(initial.whenDate); // Date | null
-  const [buildingType, setBuildingType] = useState(initial.buildingType);
-  const [rentType, setRentType] = useState(initial.rentType);
-
-  const [priceFrom, setPriceFrom] = useState(initial.priceFrom);
-  const [priceTo, setPriceTo] = useState(initial.priceTo);
-  const [areaFrom, setAreaFrom] = useState(initial.areaFrom);
-  const [areaTo, setAreaTo] = useState(initial.areaTo);
-
-  const [rooms, setRooms] = useState(initial.rooms);
-  const [moreOpen, setMoreOpen] = useState(initial.moreOpen);
-
-  const [kitchen, setKitchen] = useState(initial.kitchen);
-  const [pets, setPets] = useState(initial.pets);
-  const [lift, setLift] = useState(initial.lift);
-  const [parking, setParking] = useState(initial.parking);
-  const [furnished, setFurnished] = useState(initial.furnished);
-  const [balcony, setBalcony] = useState(initial.balcony);
-  const [storage, setStorage] = useState(initial.storage);
-
   const today = useMemo(() => startOfDay(new Date()), []);
+
+  const initial = readInitial(sp);
+
+  const [form, dispatch] = useReducer(formReducer, initial);
+
+  useEffect(() => {
+    dispatch({ type: "replace", payload: readInitial(sp) });
+  }, [sp.toString()]);
+
   const whenLabel = useMemo(() => {
-    if (!whenDate) return "Обрати дату";
-    if (sameDay(whenDate, today)) return "Від сьогодні";
-    return formatUaDate(whenDate);
-  }, [whenDate, today]);
+    if (!form.whenDate) return "Обрати дату";
+    if (sameDay(form.whenDate, today)) return "Від сьогодні";
+    return formatUaDate(form.whenDate);
+  }, [form.whenDate, today]);
+
+  const incRooms = () =>
+    dispatch({
+      type: "patch",
+      payload: { rooms: Math.min(10, (form.rooms || 0) + 1) },
+    });
+
+  const decRooms = () =>
+    dispatch({
+      type: "patch",
+      payload: { rooms: Math.max(0, (form.rooms || 0) - 1) },
+    });
 
   const apply = () => {
-    const p = new URLSearchParams();
+    const p = new URLSearchParams(sp);
 
     const setIf = (k, v) => {
       const val = String(v ?? "").trim();
       if (val) p.set(k, val);
+      else p.delete(k);
     };
 
-    setIf("city", city);
-    setIf("district", district);
+    setIf("city", form.city);
 
-    if (whenDate) {
-      if (sameDay(whenDate, today)) {
-        p.set("from", "today");
-      } else {
-        p.set("fromDate", formatISODate(whenDate));
-      }
+    p.delete("from");
+    p.delete("fromDate");
+    if (form.whenDate) {
+      if (sameDay(form.whenDate, today)) p.set("from", "today");
+      else p.set("fromDate", formatISODate(form.whenDate));
     }
 
-    setIf("buildingType", buildingType);
-    setIf("rentType", rentType);
+    setIf("buildingType", form.buildingType);
+    setIf("rentType", form.rentType);
 
-    setIf("priceFrom", priceFrom);
-    setIf("priceTo", priceTo);
-    setIf("areaFrom", areaFrom);
-    setIf("areaTo", areaTo);
+    setIf("priceFrom", form.priceFrom);
+    setIf("priceTo", form.priceTo);
+    setIf("areaFrom", form.areaFrom);
+    setIf("areaTo", form.areaTo);
 
-    if (rooms > 0) p.set("rooms", String(rooms));
+    if (form.rooms > 0) p.set("rooms", String(form.rooms));
+    else p.delete("rooms");
 
-    const setBool = (k, v) => v && p.set(k, "1");
+    const setBool = (k, v) => (v ? p.set(k, "1") : p.delete(k));
 
-    setBool("more", moreOpen);
-    setBool("kitchen", kitchen);
-    setBool("pets", pets);
-    setBool("lift", lift);
-    setBool("parking", parking);
-    setBool("furnished", furnished);
-    setBool("balcony", balcony);
-    setBool("storage", storage);
+    setBool("more", form.moreOpen);
+    setBool("kitchen", form.kitchen);
+    setBool("pets", form.pets);
+    setBool("lift", form.lift);
+    setBool("parking", form.parking);
+    setBool("furnished", form.furnished);
+    setBool("balcony", form.balcony);
+    setBool("storage", form.storage);
 
-    navigate(`/listings?${p.toString()}`);
+    p.set("page", "1");
+    setSp(p, { replace: false });
     setOpenId(null);
   };
 
   const clear = () => {
-    setCity("");
-    setDistrict("");
-    setWhenDate(null);
-    setBuildingType("");
-    setRentType("");
+    const p = new URLSearchParams();
+    if (sp.get("fav") === "1") p.set("fav", "1");
+    setSp(p, { replace: false });
 
-    setPriceFrom("");
-    setPriceTo("");
-    setAreaFrom("");
-    setAreaTo("");
-
-    setRooms(0);
-
-    setKitchen(false);
-    setPets(false);
-    setLift(false);
-    setParking(false);
-    setFurnished(false);
-    setBalcony(false);
-    setStorage(false);
-
-    navigate("/listings");
     setOpenId(null);
   };
-
-  const incRooms = () => setRooms((v) => Math.min(10, (v || 0) + 1));
-  const decRooms = () => setRooms((v) => Math.max(0, (v || 0) - 1));
 
   return (
     <section className={styles.card}>
@@ -254,16 +225,20 @@ export default function SearchPanel() {
 
           <div className={styles.control}>
             <input
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
+              value={form.city}
+              onChange={(e) =>
+                dispatch({ type: "patch", payload: { city: e.target.value } })
+              }
               placeholder="Київ, Київська область"
             />
 
-            {city && (
+            {form.city && (
               <button
                 type="button"
                 className={styles.clearBtn}
-                onClick={() => setCity("")}
+                onClick={() =>
+                  dispatch({ type: "patch", payload: { city: "" } })
+                }
                 aria-label="Clear city"
               >
                 <ClearIcon />
@@ -271,19 +246,6 @@ export default function SearchPanel() {
             )}
           </div>
         </div>
-
-        {/* Район */}
-        <DropdownField
-          label="Район"
-          id="district"
-          openId={openId}
-          toggle={toggle}
-          value={district}
-          options={DISTRICTS}
-          onPick={setDistrict}
-          icon={<ChevronDownIcon />}
-          registerRef={registerDropdownRef}
-        />
 
         {/* Доступно від — календарь */}
         <div className={styles.field}>
@@ -305,8 +267,10 @@ export default function SearchPanel() {
             {openId === "when" && (
               <div className={styles.calendarWrap}>
                 <CalendarDropdown
-                  value={whenDate}
-                  onChange={(d) => setWhenDate(d)}
+                  value={form.whenDate}
+                  onChange={(d) =>
+                    dispatch({ type: "patch", payload: { whenDate: d } })
+                  }
                   classNames={calStyles}
                   onClose={() => setOpenId(null)}
                 />
@@ -321,9 +285,11 @@ export default function SearchPanel() {
           id="buildingType"
           openId={openId}
           toggle={toggle}
-          value={buildingType}
+          value={form.buildingType}
           options={BUILDING_TYPES}
-          onPick={setBuildingType}
+          onPick={(v) =>
+            dispatch({ type: "patch", payload: { buildingType: v } })
+          }
           icon={<ChevronDownIcon />}
           registerRef={registerDropdownRef}
         />
@@ -334,9 +300,9 @@ export default function SearchPanel() {
           id="rentType"
           openId={openId}
           toggle={toggle}
-          value={rentType}
+          value={form.rentType}
           options={RENT_TYPES}
-          onPick={setRentType}
+          onPick={(v) => dispatch({ type: "patch", payload: { rentType: v } })}
           icon={<ChevronDownIcon />}
           registerRef={registerDropdownRef}
         />
@@ -348,15 +314,25 @@ export default function SearchPanel() {
             <input
               inputMode="numeric"
               placeholder="Від"
-              value={priceFrom}
-              onChange={(e) => setPriceFrom(e.target.value)}
+              value={form.priceFrom}
+              onChange={(e) =>
+                dispatch({
+                  type: "patch",
+                  payload: { priceFrom: e.target.value },
+                })
+              }
             />
             <span className={styles.dash}>-</span>
             <input
               inputMode="numeric"
               placeholder="До"
-              value={priceTo}
-              onChange={(e) => setPriceTo(e.target.value)}
+              value={form.priceTo}
+              onChange={(e) =>
+                dispatch({
+                  type: "patch",
+                  payload: { priceTo: e.target.value },
+                })
+              }
             />
           </div>
         </div>
@@ -368,15 +344,22 @@ export default function SearchPanel() {
             <input
               inputMode="numeric"
               placeholder="Від"
-              value={areaFrom}
-              onChange={(e) => setAreaFrom(e.target.value)}
+              value={form.areaFrom}
+              onChange={(e) =>
+                dispatch({
+                  type: "patch",
+                  payload: { areaFrom: e.target.value },
+                })
+              }
             />
             <span className={styles.dash}>-</span>
             <input
               inputMode="numeric"
               placeholder="До"
-              value={areaTo}
-              onChange={(e) => setAreaTo(e.target.value)}
+              value={form.areaTo}
+              onChange={(e) =>
+                dispatch({ type: "patch", payload: { areaTo: e.target.value } })
+              }
             />
           </div>
         </div>
@@ -392,7 +375,7 @@ export default function SearchPanel() {
             >
               –
             </button>
-            <span className={styles.roomsValue}>{rooms || 0}</span>
+            <span className={styles.roomsValue}>{form.rooms || 0}</span>
             <button
               type="button"
               className={styles.roundBtn}
@@ -408,40 +391,70 @@ export default function SearchPanel() {
         <button
           type="button"
           className={styles.moreLink}
-          onClick={() => setMoreOpen((v) => !v)}
+          onClick={() =>
+            dispatch({ type: "patch", payload: { moreOpen: !form.moreOpen } })
+          }
         >
-          {moreOpen ? "Менше фільтрів" : "Більше фільтрів"}
-          <span className={moreOpen ? styles.chevUp : styles.chevDown} />
+          {form.moreOpen ? "Менше фільтрів" : "Більше фільтрів"}
+          <span className={form.moreOpen ? styles.chevUp : styles.chevDown} />
         </button>
       </div>
 
       <div
-        className={`${styles.moreCollapsible} ${moreOpen ? styles.moreOpen : ""}`}
+        className={`${styles.moreCollapsible} ${
+          form.moreOpen ? styles.moreOpen : ""
+        }`}
       >
         <div className={styles.moreInner}>
           <div className={styles.toggles}>
             <Toggle
               label="Окрема кухня"
-              value={kitchen}
-              onChange={setKitchen}
+              value={form.kitchen}
+              onChange={(v) =>
+                dispatch({ type: "patch", payload: { kitchen: v } })
+              }
             />
             <Toggle
               label="Допускаються тварини"
-              value={pets}
-              onChange={setPets}
+              value={form.pets}
+              onChange={(v) =>
+                dispatch({ type: "patch", payload: { pets: v } })
+              }
             />
-            <Toggle label="Є ліфт" value={lift} onChange={setLift} />
+            <Toggle
+              label="Є ліфт"
+              value={form.lift}
+              onChange={(v) =>
+                dispatch({ type: "patch", payload: { lift: v } })
+              }
+            />
             <Toggle
               label="Парковочне місце"
-              value={parking}
-              onChange={setParking}
+              value={form.parking}
+              onChange={(v) =>
+                dispatch({ type: "patch", payload: { parking: v } })
+              }
             />
-            <Toggle label="З меблю" value={furnished} onChange={setFurnished} />
-            <Toggle label="Є балкон" value={balcony} onChange={setBalcony} />
+            <Toggle
+              label="З меблю"
+              value={form.furnished}
+              onChange={(v) =>
+                dispatch({ type: "patch", payload: { furnished: v } })
+              }
+            />
+            <Toggle
+              label="Є балкон"
+              value={form.balcony}
+              onChange={(v) =>
+                dispatch({ type: "patch", payload: { balcony: v } })
+              }
+            />
             <Toggle
               label="Є складське приміщення"
-              value={storage}
-              onChange={setStorage}
+              value={form.storage}
+              onChange={(v) =>
+                dispatch({ type: "patch", payload: { storage: v } })
+              }
             />
           </div>
         </div>

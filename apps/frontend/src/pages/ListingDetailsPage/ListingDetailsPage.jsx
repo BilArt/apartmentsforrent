@@ -1,5 +1,4 @@
-// src/pages/ListingDetailsPage/ListingDetailsPage.jsx
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { listingsApi } from "../../api/listings";
@@ -108,6 +107,8 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
   const [myReqError, setMyReqError] = useState("");
   const [myRequest, setMyRequest] = useState(null);
 
+  const refreshGuardRef = useRef({ inFlight: false, lastAt: 0 });
+
   useEffect(() => {
     let alive = true;
 
@@ -177,7 +178,6 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
         if (!alive) return;
 
         const msg = e?.message || "Не вдалося перевірити заявку";
-        // если сессия умерла — просто считаем, что "заявки нет"
         if (/not authenticated|unauthorized|401/i.test(String(msg))) {
           setMyRequest(null);
           setMyReqStatus("ok");
@@ -195,7 +195,92 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
     };
   }, [canCheckMyRequest, isOwnListing, item?.id]);
 
-  const hasMyRequest = Boolean(myRequest?.id);
+  // ✅ слушаем события из RequestsPage и ViewingRequestForm
+  useEffect(() => {
+    if (!item?.id) return;
+
+    const doRefreshMyRequest = () => {
+      const now = Date.now();
+      const guard = refreshGuardRef.current;
+
+      if (guard.inFlight) return;
+      if (now - guard.lastAt < 600) return;
+
+      guard.inFlight = true;
+      guard.lastAt = now;
+
+      requestsApi
+        .getMy()
+        .then((myList) => {
+          const arr = Array.isArray(myList) ? myList : [];
+          const found = arr.find(
+            (r) => String(r?.listingId) === String(item.id)
+          );
+          setMyRequest(found || null);
+          setMyReqStatus("ok");
+          setMyReqError("");
+        })
+        .catch((err) => {
+          const msg = err?.message || "Не вдалося оновити заявку";
+          if (/not authenticated|unauthorized|401/i.test(String(msg))) return;
+          setMyReqError(msg);
+        })
+        .finally(() => {
+          refreshGuardRef.current.inFlight = false;
+        });
+    };
+
+    const handler = (e) => {
+      const d = e?.detail;
+      if (!d) return;
+      if (String(d.listingId) !== String(item.id)) return;
+
+      // 🔥 если заявка только что создана — показываем ее сразу (даже без id)
+      if (e.type === "requestCreated") {
+        setMyReqStatus("ok");
+        setMyReqError("");
+        setMyRequest((prev) => {
+          if (prev?.listingId && String(prev.listingId) === String(item.id)) {
+            // уже есть — оставим
+            return prev;
+          }
+          return { listingId: String(item.id), status: d.status || "PENDING" };
+        });
+
+        // подтянем реальный объект с id
+        doRefreshMyRequest();
+        return;
+      }
+
+      // requestStatusChanged: обновляем статус локально (даже если id еще нет)
+      if (e.type === "requestStatusChanged") {
+        setMyReqStatus("ok");
+        setMyReqError("");
+        setMyRequest((prev) => {
+          if (!prev) {
+            return { listingId: String(item.id), status: d.status };
+          }
+          if (String(prev.listingId) !== String(item.id)) return prev;
+          return { ...prev, status: d.status };
+        });
+
+        // и подтянем свежие данные (id/status)
+        doRefreshMyRequest();
+      }
+    };
+
+    window.addEventListener("requestCreated", handler);
+    window.addEventListener("requestStatusChanged", handler);
+
+    return () => {
+      window.removeEventListener("requestCreated", handler);
+      window.removeEventListener("requestStatusChanged", handler);
+    };
+  }, [item?.id]);
+
+  const hasMyRequest =
+    Boolean(myRequest?.listingId) &&
+    String(myRequest.listingId) === String(item?.id);
   const myRequestLabel = hasMyRequest ? statusLabel(myRequest.status) : null;
 
   const goToRequests = () => {
@@ -364,9 +449,7 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
                         ) : hasMyRequest ? (
                           <div className={styles.requestStatusValueRow}>
                             <span
-                              className={`${styles.badge} ${statusTone(
-                                myRequest?.status
-                              )}`}
+                              className={`${styles.badge} ${statusTone(myRequest?.status)}`}
                             >
                               {myRequestLabel}
                             </span>

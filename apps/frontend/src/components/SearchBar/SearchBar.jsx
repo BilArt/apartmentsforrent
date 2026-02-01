@@ -58,7 +58,7 @@ function isSameDate(a, b) {
   );
 }
 
-export default function SearchBar({ variant = "pill" }) {
+export default function SearchBar() {
   const navigate = useNavigate();
   const [sp] = useSearchParams();
 
@@ -127,12 +127,6 @@ export default function SearchBar({ variant = "pill" }) {
 
   const decRooms = () => setRoomsCount((v) => Math.max(0, v - 1));
   const incRooms = () => setRoomsCount((v) => Math.min(10, v + 1));
-
-  const onPickToday = () => {
-    setFromToday(true);
-    setSelectedDate(null);
-    setOpenId(null);
-  };
 
   const onPickDate = (d) => {
     if (!d) return;

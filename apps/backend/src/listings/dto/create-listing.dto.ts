@@ -1,6 +1,8 @@
 import {
   ArrayMaxSize,
   IsArray,
+  IsBoolean,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
@@ -66,4 +68,54 @@ export class CreateListingDto {
   @ArrayMaxSize(10)
   @IsString({ each: true })
   images?: string[];
+
+  @IsOptional()
+  @IsIn(['old', 'new'])
+  buildingType?: 'old' | 'new';
+
+  @IsOptional()
+  @IsIn(['long', 'daily'])
+  rentType?: 'long' | 'daily';
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  area?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  rooms?: number;
+
+  @IsOptional()
+  @IsString()
+  availableFrom?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  kitchen?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  pets?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  lift?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  parking?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  furnished?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  balcony?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  storage?: boolean;
 }

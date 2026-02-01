@@ -1,4 +1,3 @@
-// src/components/Modal/Modal.jsx
 import styles from './Modal.module.scss';
 
 function Modal({ title, children, onClose }) {

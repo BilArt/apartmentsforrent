@@ -32,11 +32,16 @@ function sameDay(a, b) {
   );
 }
 
-export default function ViewingRequestForm({
-  listingId,
-  onCancel,
-  onSuccess,
-}) {
+function emitRequestCreated(listingId) {
+  if (!listingId) return;
+
+  const detail = { listingId: String(listingId), status: "PENDING" };
+
+  window.dispatchEvent(new CustomEvent("requestCreated", { detail }));
+  window.dispatchEvent(new CustomEvent("requestStatusChanged", { detail }));
+}
+
+export default function ViewingRequestForm({ listingId, onCancel, onSuccess }) {
   const [open, setOpen] = useState(false);
   const calWrapRef = useRef(null);
 
@@ -88,7 +93,11 @@ export default function ViewingRequestForm({
 
     try {
       setStatus("loading");
+
       await requestsApi.create(listingId, payload);
+
+      emitRequestCreated(listingId);
+
       setStatus("ok");
       onSuccess?.();
     } catch (err) {

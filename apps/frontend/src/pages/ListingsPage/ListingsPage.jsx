@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import SearchPanel from "../../components/SearchPanel/SearchPanel";
@@ -6,14 +6,114 @@ import ListingCard from "../../components/ListingCard/ListingCard";
 import styles from "./ListingsPage.module.scss";
 import { listingsApi } from "../../api/listings";
 
+import { getFavoriteSet, toggleFavorite } from "../../utils/favorites";
+
 function toInt(v, def = 0) {
   const n = Number(v);
   return Number.isFinite(n) ? n : def;
 }
 
-export default function ListingsPage() {
-  const [sp, setSp] = useSearchParams();
+function toNumOrNull(v) {
+  const s = String(v ?? "").trim();
+  if (!s) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
 
+function toStr(v) {
+  return String(v ?? "").trim();
+}
+
+function toLower(v) {
+  const s = toStr(v);
+  return s ? s.toLowerCase() : "";
+}
+
+function toNumOrNullSafe(v) {
+  if (v === null || v === undefined) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function toISODateOnly(d) {
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function normalizeAvailableFrom(x) {
+  const src = x?.availableFrom ?? x?.availableFromDate ?? null;
+  const s = toStr(src);
+  if (!s) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  d.setHours(0, 0, 0, 0);
+  return toISODateOnly(d);
+}
+
+function normalizeListing(x) {
+  const price = toNumOrNullSafe(x?.price);
+
+  // ✅ area/rooms = null, если нет значения (а не 0 — 0 это “реально ноль”)
+  const area = toNumOrNullSafe(x?.area);
+  const rooms = toNumOrNullSafe(x?.rooms);
+
+  return {
+    ...x,
+
+    price: price ?? 0,
+    area,
+    rooms,
+
+    buildingType: toLower(x?.buildingType),
+    rentType: toLower(x?.rentType),
+
+    availableFrom: normalizeAvailableFrom(x),
+
+    kitchen: Boolean(x?.kitchen),
+    pets: Boolean(x?.pets),
+    lift: Boolean(x?.lift),
+    parking: Boolean(x?.parking),
+    furnished: Boolean(x?.furnished),
+    balcony: Boolean(x?.balcony),
+    storage: Boolean(x?.storage),
+  };
+}
+
+function parseISODate(value) {
+  if (!value || typeof value !== "string") return null;
+  const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return null;
+
+  const y = Number(m[1]);
+  const mo = Number(m[2]) - 1;
+  const d = Number(m[3]);
+
+  const dt = new Date(y, mo, d);
+  if (dt.getFullYear() !== y || dt.getMonth() !== mo || dt.getDate() !== d)
+    return null;
+
+  dt.setHours(0, 0, 0, 0);
+  return dt;
+}
+
+function startOfDay(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+/**
+ * ⚠️ ВАЖНО:
+ * currentUser должен приходить из App.jsx или Redux (единый источник истины).
+ * НЕ читаем localStorage тут — иначе не будет реактивности.
+ */
+export default function ListingsPage({ currentUser } = {}) {
+  const [sp, setSp] = useSearchParams();
   const resultsRef = useRef(null);
 
   const [items, setItems] = useState([]);
@@ -23,25 +123,51 @@ export default function ListingsPage() {
   const page = Math.max(1, toInt(sp.get("page") || 1, 1));
   const perPage = 8;
 
+  const onlyFav = sp.get("fav") === "1";
+
+  // ✅ canFavorite обновляется реактивно вместе с currentUser
+  const canFavorite = Boolean(currentUser?.id);
+
   const filters = useMemo(() => {
     const city = (sp.get("city") || "").trim().toLowerCase();
-    return { city };
-  }, [sp]);
+    const buildingType = (sp.get("buildingType") || "").trim().toLowerCase();
+    const rentType = (sp.get("rentType") || "").trim().toLowerCase();
 
-  useEffect(() => {
-    const next = new URLSearchParams(sp);
+    const priceFrom = toNumOrNull(sp.get("priceFrom"));
+    const priceTo = toNumOrNull(sp.get("priceTo"));
+    const areaFrom = toNumOrNull(sp.get("areaFrom"));
+    const areaTo = toNumOrNull(sp.get("areaTo"));
 
-    const pageNow = next.get("page") || "1";
+    const rooms = toInt(sp.get("rooms") || 0, 0);
 
-    const withoutPage = new URLSearchParams(sp);
-    withoutPage.delete("page");
+    const from = sp.get("from");
+    const fromDate = parseISODate(sp.get("fromDate") || "");
+    const today = startOfDay(new Date());
+    const availableFrom = from === "today" ? today : fromDate ? fromDate : null;
 
-    if (pageNow !== "1") {
-      next.set("page", "1");
-      setSp(next, { replace: true });
-    }
+    const bool = (k) => sp.get(k) === "1";
+
+    return {
+      city,
+      buildingType,
+      rentType,
+      priceFrom,
+      priceTo,
+      areaFrom,
+      areaTo,
+      rooms,
+      availableFrom,
+      kitchen: bool("kitchen"),
+      pets: bool("pets"),
+      lift: bool("lift"),
+      parking: bool("parking"),
+      furnished: bool("furnished"),
+      balcony: bool("balcony"),
+      storage: bool("storage"),
+    };
   }, [sp.toString()]);
 
+  // ✅ загрузка объявлений
   useEffect(() => {
     let alive = true;
 
@@ -51,9 +177,12 @@ export default function ListingsPage() {
         setError("");
 
         const data = await listingsApi.getAll();
-
         if (!alive) return;
-        setItems(Array.isArray(data) ? data : []);
+
+        const normalized = (Array.isArray(data) ? data : []).map(
+          normalizeListing
+        );
+        setItems(normalized);
         setStatus("ok");
       } catch (e) {
         if (!alive) return;
@@ -67,25 +196,126 @@ export default function ListingsPage() {
     };
   }, []);
 
-  const filtered = useMemo(() => {
-    const q = filters.city;
-
-    return items.filter((l) => {
-      const cityName = (l?.city?.nameUk || l?.city?.name || "")
-        .toString()
-        .toLowerCase();
-
-      const title = (l?.title || "").toString().toLowerCase();
-      const address = (l?.address || "").toString().toLowerCase();
-
-      if (q) {
-        const hay = `${cityName} ${title} ${address}`;
-        if (!hay.includes(q)) return false;
+  // ✅ синхронизируем isFavorite:
+  // - если залогинен: подтягиваем set из localStorage
+  // - если НЕ залогинен: сбрасываем все isFavorite в false
+  useEffect(() => {
+    setItems((prev) => {
+      if (!canFavorite) {
+        return prev.map((x) => ({ ...x, isFavorite: false }));
       }
+
+      const favSet = getFavoriteSet();
+      return prev.map((x) => ({
+        ...x,
+        isFavorite: favSet.has(String(x.id)),
+      }));
+    });
+  }, [canFavorite, currentUser?.id]);
+
+  // ✅ если меняются фильтры — сбрасываем page на 1
+  useEffect(() => {
+    const next = new URLSearchParams(sp);
+    const pageNow = next.get("page") || "1";
+    if (pageNow !== "1") {
+      next.set("page", "1");
+      setSp(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    filters.city,
+    filters.buildingType,
+    filters.rentType,
+    String(filters.priceFrom),
+    String(filters.priceTo),
+    String(filters.areaFrom),
+    String(filters.areaTo),
+    String(filters.rooms),
+    String(filters.availableFrom?.toISOString?.() || ""),
+    filters.kitchen,
+    filters.pets,
+    filters.lift,
+    filters.parking,
+    filters.furnished,
+    filters.balcony,
+    filters.storage,
+    onlyFav,
+  ]);
+
+  const filtered = useMemo(() => {
+    return items.filter((l) => {
+      if (onlyFav && !l?.isFavorite) return false;
+
+      if (filters.city) {
+        const cityName = (l?.city?.nameUk || l?.city?.name || "")
+          .toString()
+          .toLowerCase();
+        const title = (l?.title || "").toString().toLowerCase();
+        const address = (l?.address || "").toString().toLowerCase();
+        const hay = `${cityName} ${title} ${address}`;
+        if (!hay.includes(filters.city)) return false;
+      }
+
+      if (filters.buildingType) {
+        const bt = (l?.buildingType || "").toString().toLowerCase();
+        if (!bt) return false;
+        if (bt !== filters.buildingType) return false;
+      }
+
+      if (filters.rentType) {
+        const rt = (l?.rentType || "").toString().toLowerCase();
+        if (!rt) return false;
+        if (rt !== filters.rentType) return false;
+      }
+
+      if (filters.priceFrom !== null) {
+        if (typeof l?.price !== "number") return false;
+        if (l.price < filters.priceFrom) return false;
+      }
+      if (filters.priceTo !== null) {
+        if (typeof l?.price !== "number") return false;
+        if (l.price > filters.priceTo) return false;
+      }
+
+      if (filters.areaFrom !== null) {
+        const a = typeof l?.area === "number" ? l.area : null;
+        if (a === null) return false;
+        if (a < filters.areaFrom) return false;
+      }
+      if (filters.areaTo !== null) {
+        const a = typeof l?.area === "number" ? l.area : null;
+        if (a === null) return false;
+        if (a > filters.areaTo) return false;
+      }
+
+      if (filters.rooms > 0) {
+        const r = typeof l?.rooms === "number" ? l.rooms : null;
+        if (r === null) return false;
+        if (r !== filters.rooms) return false;
+      }
+
+      if (filters.availableFrom) {
+        const dt = parseISODate(l?.availableFrom);
+        if (!dt) return false;
+        if (dt > filters.availableFrom) return false;
+      }
+
+      const checkBool = (key, enabled) => {
+        if (!enabled) return true;
+        return Boolean(l?.[key]);
+      };
+
+      if (!checkBool("kitchen", filters.kitchen)) return false;
+      if (!checkBool("pets", filters.pets)) return false;
+      if (!checkBool("lift", filters.lift)) return false;
+      if (!checkBool("parking", filters.parking)) return false;
+      if (!checkBool("furnished", filters.furnished)) return false;
+      if (!checkBool("balcony", filters.balcony)) return false;
+      if (!checkBool("storage", filters.storage)) return false;
 
       return true;
     });
-  }, [items, filters.city]);
+  }, [items, onlyFav, filters]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const safePage = Math.min(page, totalPages);
@@ -95,15 +325,61 @@ export default function ListingsPage() {
     return filtered.slice(start, start + perPage);
   }, [filtered, safePage]);
 
-  const goToPage = (nextPage) => {
-    const p = Math.min(Math.max(1, nextPage), totalPages);
+  const goToPage = useCallback(
+    (nextPage) => {
+      const p = Math.min(Math.max(1, nextPage), totalPages);
 
-    const next = new URLSearchParams(sp);
-    next.set("page", String(p));
-    setSp(next, { replace: false });
+      const next = new URLSearchParams(sp);
+      next.set("page", String(p));
+      setSp(next, { replace: false });
 
-    resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-  };
+      resultsRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    },
+    [sp, setSp, totalPages]
+  );
+
+  const setFavMode = useCallback(
+    (on) => {
+      const next = new URLSearchParams(sp);
+
+      // ✅ если не залогинен — не даём включить режим избранного
+      if (!canFavorite) {
+        next.delete("fav");
+      } else {
+        if (on) next.set("fav", "1");
+        else next.delete("fav");
+      }
+
+      next.set("page", "1");
+      setSp(next, { replace: false });
+
+      resultsRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    },
+    [sp, setSp, canFavorite]
+  );
+
+  const onToggleFav = useCallback(
+    (listingId) => {
+      if (!canFavorite) return;
+
+      const set = toggleFavorite(listingId);
+
+      setItems((prev) =>
+        prev.map((x) =>
+          String(x.id) === String(listingId)
+            ? { ...x, isFavorite: set.has(String(listingId)) }
+            : x
+        )
+      );
+    },
+    [canFavorite]
+  );
 
   const pagesToShow = useMemo(() => {
     const max = Math.min(5, totalPages);
@@ -131,15 +407,63 @@ export default function ListingsPage() {
 
         {status === "ok" && (
           <>
+            <div className={styles.favToggleWrap}>
+              <div
+                className={styles.favToggle}
+                role="tablist"
+                aria-label="View"
+              >
+                <button
+                  type="button"
+                  className={`${styles.favToggleBtn} ${
+                    !onlyFav ? styles.favToggleActive : ""
+                  }`}
+                  onClick={() => setFavMode(false)}
+                  aria-pressed={!onlyFav}
+                >
+                  Усі
+                </button>
+
+                {/* ✅ Избранные доступны только залогиненному */}
+                <button
+                  type="button"
+                  className={`${styles.favToggleBtn} ${
+                    onlyFav ? styles.favToggleActive : ""
+                  }`}
+                  onClick={() => setFavMode(true)}
+                  aria-pressed={onlyFav}
+                  disabled={!canFavorite}
+                  title={
+                    !canFavorite ? "Увійди, щоб користуватись обраним" : ""
+                  }
+                >
+                  Обрані
+                </button>
+              </div>
+            </div>
+
+            {!canFavorite && (
+              <div style={{ padding: "0 0 12px", opacity: 0.7 }}>
+                Увійди, щоб додавати оголошення в обране.
+              </div>
+            )}
+
             <div className={styles.grid}>
               {pageItems.map((l) => (
-                <ListingCard key={l.id} listing={l} />
+                <ListingCard
+                  key={l.id}
+                  listing={l}
+                  onToggleFav={onToggleFav}
+                  canFavorite={canFavorite}
+                />
               ))}
             </div>
 
             {filtered.length === 0 && (
               <div style={{ padding: 16, opacity: 0.7 }}>
-                Нічого не знайдено за цими фільтрами.
+                {onlyFav
+                  ? "Поки що немає обраних оголошень."
+                  : "Нічого не знайдено за цими фільтрами."}
               </div>
             )}
 

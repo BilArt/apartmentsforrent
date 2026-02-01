@@ -1,3 +1,4 @@
+// src/pages/RequestsPage/RequestsPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { requestsApi } from "../../api/requests";
@@ -58,18 +59,22 @@ export default function RequestsPage({
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const urlListingId = searchParams.get("listingId");
-  const urlTab = searchParams.get("tab");
+  const tabFromUrl = searchParams.get("tab");
+  const listingIdFromUrl = searchParams.get("listingId");
+
+  const [tab, setTab] = useState(tabFromUrl === "my" ? "my" : "incoming");
+
+  useEffect(() => {
+    const t = tabFromUrl === "my" ? "my" : "incoming";
+    setTab(t);
+  }, [tabFromUrl]);
 
   const [sessionUser, setSessionUser] = useState(null);
   const [sessionLoading, setSessionLoading] = useState(false);
 
   const effectiveUser = currentUser || sessionUser;
   const effectiveAuthLoading = authLoading || sessionLoading;
-
   const isAuthed = !effectiveAuthLoading && Boolean(effectiveUser);
-
-  const [tab, setTab] = useState("incoming");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -79,22 +84,6 @@ export default function RequestsPage({
 
   const [updatingIds, setUpdatingIds] = useState(() => new Set());
   const [actionErrors, setActionErrors] = useState({});
-
-  useEffect(() => {
-    if (urlListingId) {
-      if (tab !== "incoming") setTab("incoming");
-      if (urlTab !== "incoming") {
-        const next = new URLSearchParams(searchParams);
-        next.set("tab", "incoming");
-        setSearchParams(next, { replace: true });
-      }
-      return;
-    }
-
-    if (urlTab === "my" || urlTab === "incoming") {
-      if (tab !== urlTab) setTab(urlTab);
-    }
-  }, [urlListingId, urlTab]);
 
   const incomingCount = incoming?.length || 0;
   const myCount = my?.length || 0;
@@ -171,6 +160,16 @@ export default function RequestsPage({
     try {
       const updated = await requestsApi.updateStatus(requestId, newStatus);
 
+      window.dispatchEvent(
+        new CustomEvent("requestStatusChanged", {
+          detail: {
+            listingId: String(updated?.listingId),
+            status: updated?.status,
+            requestId: String(updated?.id || requestId),
+          },
+        })
+      );
+
       const applyUpdated = (arr) =>
         arr.map((r) => (r.id === requestId ? updated : r));
 
@@ -188,15 +187,26 @@ export default function RequestsPage({
     }
   };
 
-  const list = useMemo(() => {
-    const base = tab === "incoming" ? incoming : my;
+  const rawList = tab === "incoming" ? incoming : my;
 
-    if (!urlListingId) return base;
-    if (tab !== "incoming") return base;
-    return (Array.isArray(base) ? base : []).filter(
-      (r) => String(r?.listingId) === String(urlListingId)
+  const list = useMemo(() => {
+    if (!listingIdFromUrl) return rawList;
+    return rawList.filter(
+      (r) => String(r?.listingId) === String(listingIdFromUrl)
     );
-  }, [tab, incoming, my, urlListingId]);
+  }, [rawList, listingIdFromUrl]);
+
+  const clearListingFilter = () => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("listingId");
+    setSearchParams(next);
+  };
+
+  const setTabTo = (nextTab) => {
+    const next = new URLSearchParams(searchParams);
+    next.set("tab", nextTab);
+    setSearchParams(next);
+  };
 
   let content = null;
 
@@ -254,16 +264,28 @@ export default function RequestsPage({
       </div>
     );
   } else if (!list.length) {
-    const emptyText = urlListingId
-      ? "Для цього оголошення поки що немає вхідних заявок."
-      : tab === "incoming"
-        ? "У тебе ще немає вхідних заявок."
-        : "Ти ще не надсилав заявки на перегляд.";
-
     content = (
       <div className={styles.state}>
         <div className={styles.stateTitle}>Поки що порожньо</div>
-        <div className={styles.stateText}>{emptyText}</div>
+        <div className={styles.stateText}>
+          {listingIdFromUrl
+            ? "Немає заявок для цього оголошення."
+            : tab === "incoming"
+              ? "У тебе ще немає вхідних заявок."
+              : "Ти ще не надсилав заявки на перегляд."}
+        </div>
+
+        {listingIdFromUrl ? (
+          <div className={styles.stateActions}>
+            <button
+              type="button"
+              className={styles.secondaryBtn}
+              onClick={clearListingFilter}
+            >
+              Скинути фільтр
+            </button>
+          </div>
+        ) : null}
       </div>
     );
   } else {
@@ -284,7 +306,6 @@ export default function RequestsPage({
 
           const landlordLabel =
             r?.listing?.landlordName || r?.listing?.ownerId || "—";
-
           const isUpdating = updatingIds.has(r.id);
 
           const isPending = r.status === "PENDING";
@@ -317,7 +338,7 @@ export default function RequestsPage({
                     className={styles.ghostBtn}
                     onClick={() => navigate(`/listings/${r.listingId}`)}
                   >
-                    Відкрити оголошення
+                    Відкрити
                   </button>
 
                   {canUseActions ? (
@@ -334,7 +355,7 @@ export default function RequestsPage({
 
                       <button
                         type="button"
-                        className={styles.ghostBtn}
+                        className={`${styles.ghostBtn} ${styles.dangerBtn}`}
                         onClick={() => onChangeStatus(r.id, "REJECTED")}
                         disabled={isUpdating || !isPending}
                         title={!isPending ? "Доступно тільки для PENDING" : ""}
@@ -395,8 +416,6 @@ export default function RequestsPage({
     );
   }
 
-  const isListingFiltered = Boolean(urlListingId);
-
   return (
     <div className={styles.page}>
       <div className="container">
@@ -408,21 +427,8 @@ export default function RequestsPage({
               <button
                 type="button"
                 className={`${styles.tabBtn} ${tab === "my" ? styles.tabActive : ""}`}
-                onClick={() => {
-                  if (isListingFiltered) return;
-
-                  setTab("my");
-                  const next = new URLSearchParams(searchParams);
-                  next.set("tab", "my");
-                  next.delete("listingId");
-                  setSearchParams(next, { replace: true });
-                }}
-                disabled={tabsDisabled || isListingFiltered}
-                title={
-                  isListingFiltered
-                    ? "Фільтр по оголошенню працює тільки для 'Вхідні'"
-                    : ""
-                }
+                onClick={() => setTabTo("my")}
+                disabled={tabsDisabled}
               >
                 Мої ({myCount})
               </button>
@@ -430,12 +436,7 @@ export default function RequestsPage({
               <button
                 type="button"
                 className={`${styles.tabBtn} ${tab === "incoming" ? styles.tabActive : ""}`}
-                onClick={() => {
-                  setTab("incoming");
-                  const next = new URLSearchParams(searchParams);
-                  next.set("tab", "incoming");
-                  setSearchParams(next, { replace: true });
-                }}
+                onClick={() => setTabTo("incoming")}
                 disabled={tabsDisabled}
               >
                 Вхідні ({incomingCount})
@@ -453,6 +454,21 @@ export default function RequestsPage({
             </button>
           </div>
         </div>
+
+        {listingIdFromUrl ? (
+          <div className={styles.filterRow}>
+            <span className={styles.filterChip}>
+              Фільтр: {listingIdFromUrl}
+            </span>
+            <button
+              type="button"
+              className={styles.secondaryBtn}
+              onClick={clearListingFilter}
+            >
+              Скинути
+            </button>
+          </div>
+        ) : null}
 
         <div className={styles.shell}>{content}</div>
       </div>

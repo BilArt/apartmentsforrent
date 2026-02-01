@@ -55,8 +55,6 @@ function enrichListing(listing: Listing): ListingWithOwner {
 export class ListingsController {
   constructor(private readonly listings: ListingsService) {}
 
-  // ✅ теперь поддерживает фильтр:
-  // GET /listings?cityId=703448
   @Get()
   getAll(@Query('cityId') cityId?: string): ListingWithOwner[] {
     return this.listings.getAll({ cityId }).map(enrichListing);
@@ -100,9 +98,19 @@ export class ListingsController {
   }
 
   @Get(':id')
-  getOne(@Param('id') id: string): ListingWithOwner {
+  getOne(@Param('id') id: string, @Req() req: Request): ListingWithOwner {
     const listing = this.listings.getById(id);
     if (!listing) throw new NotFoundException('Listing not found');
+
+    const viewerId = req.session?.userId ? String(req.session.userId) : null;
+
+    if (
+      listing.status === 'HIDDEN' &&
+      String(listing.ownerId) !== String(viewerId)
+    ) {
+      throw new NotFoundException('Listing not found');
+    }
+
     return enrichListing(listing);
   }
 

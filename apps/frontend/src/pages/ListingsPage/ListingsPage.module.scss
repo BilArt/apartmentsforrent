@@ -8,8 +8,32 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 24px;
+
+  align-items: stretch;
+}
+
+@media (max-width: 1200px) {
+  .grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+  }
+}
+
+@media (max-width: 560px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 
 .pagination {
@@ -43,4 +67,55 @@
 
 .dots {
   color: rgba(0, 0, 0, 0.35);
+}
+
+.favToggleWrap {
+  margin-top: 14px;
+  margin-bottom: 14px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.favToggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.favToggleBtn {
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 800;
+  color: rgba(0, 0, 0, 0.65);
+
+  transition:
+    background-color 160ms ease,
+    color 160ms ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: rgba(0, 0, 0, 0.85);
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+}
+
+.favToggleActive {
+  background: var(--color-primary);
+  color: #fff;
+
+  &:hover {
+    background: #ff7377;
+    color: #fff;
+  }
 }

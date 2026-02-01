@@ -1,0 +1,92 @@
+.root {
+  display: grid;
+  gap: 10px;
+}
+
+.title {
+  font-weight: 800;
+  font-size: 18px;
+  line-height: 1.2;
+  color: var(--color-text-primary, #222);
+  text-align: center;
+}
+
+.message {
+  color: rgba(0, 0, 0, 0.72);
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.cancelBtn,
+.confirmBtn,
+.dangerBtn {
+  height: 44px;
+  padding: 0 18px;
+  border-radius: 999px;
+  font-weight: 800;
+  cursor: pointer;
+  border: 0;
+
+  transition:
+    background-color 160ms ease,
+    color 160ms ease,
+    transform 120ms ease,
+    opacity 160ms ease,
+    border-color 160ms ease;
+}
+
+.cancelBtn {
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.22);
+  color: rgba(0, 0, 0, 0.72);
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.03);
+    transform: translateY(-1px);
+  }
+}
+
+.confirmBtn {
+  background: rgba(0, 0, 0, 0.08);
+  color: rgba(0, 0, 0, 0.85);
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.12);
+    transform: translateY(-1px);
+  }
+}
+
+.dangerBtn {
+  background: var(--color-primary, #ff5c62);
+  color: #fff;
+
+  &:hover {
+    background: #ff7377;
+    transform: translateY(-1px);
+  }
+}
+
+.cancelBtn:disabled,
+.confirmBtn:disabled,
+.dangerBtn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.note {
+  margin-top: 2px;
+  text-align: center;
+  color: rgba(0, 0, 0, 0.45);
+  font-weight: 600;
+  font-size: 13px;
+}

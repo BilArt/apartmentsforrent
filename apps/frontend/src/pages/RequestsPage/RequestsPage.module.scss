@@ -1,3 +1,4 @@
+/* src/pages/RequestsPage/RequestsPage.module.scss */
 .page {
   padding: 28px 0 40px;
 }
@@ -182,6 +183,36 @@
   gap: 12px;
 }
 
+/* важное: делаем кнопки предсказуемыми, а не "как браузер решит" */
+.primaryBtn,
+.secondaryBtn,
+.ghostBtn {
+  height: 40px; /* было 44 — чуть компактнее, как в дизайне */
+  padding: 0 14px;
+  border-radius: 999px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+
+  white-space: nowrap;
+
+  font-size: 14px;
+  line-height: 1;
+  font-weight: 900;
+
+  cursor: pointer;
+
+  transition:
+    background-color 180ms ease,
+    color 180ms ease,
+    transform 120ms ease,
+    opacity 160ms ease,
+    box-shadow 160ms ease,
+    border-color 160ms ease;
+}
+
 .actions {
   display: flex;
   align-items: center;
@@ -190,21 +221,7 @@
   justify-content: flex-end;
 }
 
-.primaryBtn,
-.secondaryBtn,
-.ghostBtn {
-  height: 44px;
-  padding: 0 18px;
-  border-radius: 50px;
-  cursor: pointer;
-  font-weight: 900;
-  transition:
-    background-color 180ms ease,
-    color 180ms ease,
-    transform 120ms ease,
-    opacity 160ms ease;
-}
-
+/* approve */
 .primaryBtn {
   border: 0;
   background: var(--color-primary);
@@ -222,8 +239,9 @@
   }
 }
 
+/* complete */
 .secondaryBtn {
-  border: 1px solid rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(0, 0, 0, 0.18);
   background: #fff;
   color: rgba(0, 0, 0, 0.82);
 
@@ -239,13 +257,14 @@
   }
 }
 
+/* open + base ghost */
 .ghostBtn {
-  border: 0;
-  background: rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: rgba(0, 0, 0, 0.04);
   color: rgba(0, 0, 0, 0.8);
 
   &:hover {
-    background: rgba(0, 0, 0, 0.09);
+    background: rgba(0, 0, 0, 0.07);
     transform: translateY(-1px);
   }
 
@@ -253,6 +272,18 @@
     opacity: 0.55;
     cursor: default;
     transform: none;
+  }
+}
+
+/* reject — отдельный акцент, но без “орущего” вида */
+.dangerBtn {
+  border-color: rgba(255, 90, 95, 0.35);
+  background: rgba(255, 90, 95, 0.1);
+  color: rgba(200, 20, 30, 0.95);
+
+  &:hover {
+    background: rgba(255, 90, 95, 0.16);
+    border-color: rgba(255, 90, 95, 0.45);
   }
 }
 
@@ -334,8 +365,7 @@
 }
 
 .filterRow {
-  margin: 6px 0 14px;
-  max-width: 900px;
+  margin-top: 8px;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -345,35 +375,11 @@
 .filterChip {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-
-  min-height: 34px;
-  padding: 0 10px 0 12px;
+  height: 34px;
+  padding: 0 12px;
   border-radius: 999px;
-
   background: rgba(0, 0, 0, 0.04);
   color: rgba(0, 0, 0, 0.65);
-  font-weight: 800;
+  font-weight: 700;
   font-size: 13px;
-}
-
-.filterChipClose {
-  width: 28px;
-  height: 28px;
-  border-radius: 999px;
-  border: 0;
-  cursor: pointer;
-  background: rgba(0, 0, 0, 0.06);
-  color: rgba(0, 0, 0, 0.7);
-  font-weight: 900;
-  line-height: 1;
-
-  transition:
-    background-color 150ms ease,
-    transform 120ms ease;
-
-  &:hover {
-    background: rgba(0, 0, 0, 0.1);
-    transform: translateY(-1px);
-  }
 }

@@ -32,20 +32,16 @@ export class GeoService {
   private readonly settlements: Settlement[];
 
   constructor() {
-    // 1) если Nest запущен из apps/backend -> cwd уже apps/backend
     const candidate1 = path.resolve(
       process.cwd(),
       'data/geo/ua.settlements.json',
     );
 
-    // 2) если Nest запущен из корня репо -> cwd это корень
     const candidate2 = path.resolve(
       process.cwd(),
       'apps/backend/data/geo/ua.settlements.json',
     );
 
-    // 3) fallback: относительно скомпилированного файла dist
-    // dist обычно: apps/backend/dist/src/geo/geo.service.js
     const candidate3 = path.resolve(
       __dirname,
       '../../../data/geo/ua.settlements.json',
@@ -58,8 +54,6 @@ export class GeoService {
 
     this.settlements = loaded ?? [];
 
-    // маленький лог (можешь убрать потом)
-    // eslint-disable-next-line no-console
     console.log(
       `[GeoService] loaded settlements: ${this.settlements.length} (file: ${
         loaded
@@ -77,7 +71,6 @@ export class GeoService {
     const query = norm(q);
     if (!query) return [];
 
-    // settlements уже отсортированы по population в JSON
     const res: Settlement[] = [];
     for (const s of this.settlements) {
       if (
