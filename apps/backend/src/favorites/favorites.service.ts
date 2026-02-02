@@ -14,10 +14,10 @@ export class FavoritesService {
 
     if (idx !== -1) {
       favorites.splice(idx, 1);
-      return false; // удалили
+      return false;
     }
 
     favorites.push({ userId, listingId });
-    return true; // добавили
+    return true;
   }
 }
