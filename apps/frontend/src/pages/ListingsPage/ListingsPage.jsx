@@ -5,8 +5,7 @@ import SearchPanel from "../../components/SearchPanel/SearchPanel";
 import ListingCard from "../../components/ListingCard/ListingCard";
 import styles from "./ListingsPage.module.scss";
 import { listingsApi } from "../../api/listings";
-
-import { getFavoriteSet, toggleFavorite } from "../../utils/favorites";
+import { favoritesApi } from "../../api/favorites";
 
 function toInt(v, def = 0) {
   const n = Number(v);
@@ -57,21 +56,16 @@ function normalizeAvailableFrom(x) {
 
 function normalizeListing(x) {
   const price = toNumOrNullSafe(x?.price);
-
-  // ✅ area/rooms = null, если нет значения (а не 0 — 0 это “реально ноль”)
   const area = toNumOrNullSafe(x?.area);
   const rooms = toNumOrNullSafe(x?.rooms);
 
   return {
     ...x,
-
     price: price ?? 0,
     area,
     rooms,
-
     buildingType: toLower(x?.buildingType),
     rentType: toLower(x?.rentType),
-
     availableFrom: normalizeAvailableFrom(x),
 
     kitchen: Boolean(x?.kitchen),
@@ -81,6 +75,8 @@ function normalizeListing(x) {
     furnished: Boolean(x?.furnished),
     balcony: Boolean(x?.balcony),
     storage: Boolean(x?.storage),
+
+    isFavorite: false,
   };
 }
 
@@ -107,11 +103,17 @@ function startOfDay(d) {
   return x;
 }
 
-/**
- * ⚠️ ВАЖНО:
- * currentUser должен приходить из App.jsx или Redux (единый источник истины).
- * НЕ читаем localStorage тут — иначе не будет реактивности.
- */
+function normalizeFavoriteIds(payload) {
+  const ids = Array.isArray(payload)
+    ? payload
+        .map((x) =>
+          typeof x === "string" ? x : (x?.listingId ?? x?.id ?? null)
+        )
+        .filter(Boolean)
+    : [];
+  return ids.map(String);
+}
+
 export default function ListingsPage({ currentUser } = {}) {
   const [sp, setSp] = useSearchParams();
   const resultsRef = useRef(null);
@@ -124,8 +126,6 @@ export default function ListingsPage({ currentUser } = {}) {
   const perPage = 8;
 
   const onlyFav = sp.get("fav") === "1";
-
-  // ✅ canFavorite обновляется реактивно вместе с currentUser
   const canFavorite = Boolean(currentUser?.id);
 
   const filters = useMemo(() => {
@@ -167,7 +167,6 @@ export default function ListingsPage({ currentUser } = {}) {
     };
   }, [sp.toString()]);
 
-  // ✅ загрузка объявлений
   useEffect(() => {
     let alive = true;
 
@@ -182,7 +181,30 @@ export default function ListingsPage({ currentUser } = {}) {
         const normalized = (Array.isArray(data) ? data : []).map(
           normalizeListing
         );
-        setItems(normalized);
+
+        if (!canFavorite) {
+          setItems(normalized);
+          setStatus("ok");
+          return;
+        }
+
+        let favIds = [];
+        try {
+          const fav = await favoritesApi.getMy();
+          favIds = normalizeFavoriteIds(fav);
+        } catch {
+          favIds = [];
+        }
+
+        const favSet = new Set(favIds);
+
+        setItems(
+          normalized.map((x) => ({
+            ...x,
+            isFavorite: favSet.has(String(x.id)),
+          }))
+        );
+
         setStatus("ok");
       } catch (e) {
         if (!alive) return;
@@ -194,26 +216,18 @@ export default function ListingsPage({ currentUser } = {}) {
     return () => {
       alive = false;
     };
-  }, []);
-
-  // ✅ синхронизируем isFavorite:
-  // - если залогинен: подтягиваем set из localStorage
-  // - если НЕ залогинен: сбрасываем все isFavorite в false
-  useEffect(() => {
-    setItems((prev) => {
-      if (!canFavorite) {
-        return prev.map((x) => ({ ...x, isFavorite: false }));
-      }
-
-      const favSet = getFavoriteSet();
-      return prev.map((x) => ({
-        ...x,
-        isFavorite: favSet.has(String(x.id)),
-      }));
-    });
   }, [canFavorite, currentUser?.id]);
 
-  // ✅ если меняются фильтры — сбрасываем page на 1
+  useEffect(() => {
+    if (!canFavorite && onlyFav) {
+      const next = new URLSearchParams(sp);
+      next.delete("fav");
+      next.set("page", "1");
+      setSp(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canFavorite, onlyFav]);
+
   useEffect(() => {
     const next = new URLSearchParams(sp);
     const pageNow = next.get("page") || "1";
@@ -345,7 +359,6 @@ export default function ListingsPage({ currentUser } = {}) {
     (on) => {
       const next = new URLSearchParams(sp);
 
-      // ✅ если не залогинен — не даём включить режим избранного
       if (!canFavorite) {
         next.delete("fav");
       } else {
@@ -365,18 +378,33 @@ export default function ListingsPage({ currentUser } = {}) {
   );
 
   const onToggleFav = useCallback(
-    (listingId) => {
+    async (listingId) => {
       if (!canFavorite) return;
 
-      const set = toggleFavorite(listingId);
+      try {
+        const res = await favoritesApi.toggle(listingId);
+        const isFavorite = Boolean(res?.isFavorite);
 
-      setItems((prev) =>
-        prev.map((x) =>
-          String(x.id) === String(listingId)
-            ? { ...x, isFavorite: set.has(String(listingId)) }
-            : x
-        )
-      );
+        setItems((prev) =>
+          prev.map((x) =>
+            String(x.id) === String(listingId) ? { ...x, isFavorite } : x
+          )
+        );
+      } catch {
+        try {
+          const fav = await favoritesApi.getMy();
+          const favSet = new Set(normalizeFavoriteIds(fav));
+
+          setItems((prev) =>
+            prev.map((x) => ({
+              ...x,
+              isFavorite: favSet.has(String(x.id)),
+            }))
+          );
+        } catch {
+          //
+        }
+      }
     },
     [canFavorite]
   );
@@ -424,7 +452,6 @@ export default function ListingsPage({ currentUser } = {}) {
                   Усі
                 </button>
 
-                {/* ✅ Избранные доступны только залогиненному */}
                 <button
                   type="button"
                   className={`${styles.favToggleBtn} ${

@@ -174,12 +174,12 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route
           path="/listings"
-          element={
-            <ListingsPage currentUser={currentUser} authLoading={authLoading} />
-          }
+          element={<ListingsPage currentUser={currentUser} />}
         />
-
-        <Route path="/favorites" element={<FavoritesPage />} />
+        <Route
+          path="/favorites"
+          element={<FavoritesPage currentUser={currentUser} />}
+        />
 
         <Route
           path="/profile"

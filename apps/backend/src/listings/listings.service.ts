@@ -14,6 +14,29 @@ function toISODateOnly(d: Date) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
+function hasKey<K extends string>(
+  obj: unknown,
+  key: K,
+): obj is Record<K, unknown> {
+  return typeof obj === 'object' && obj !== null && key in obj;
+}
+
+function patchNullableNumber(
+  dto: UpdateListingDto,
+  key: 'area' | 'rooms',
+  current: number | null,
+): number | null {
+  if (!hasKey(dto, key)) return current;
+
+  const v = dto[key];
+
+  if (typeof v === 'number') return v;
+
+  if (v === null) return null;
+
+  return current;
+}
+
 @Injectable()
 export class ListingsService {
   getAll(filter: GetAllFilter = {}) {
@@ -47,17 +70,19 @@ export class ListingsService {
 
       buildingType: dto.buildingType ?? 'old',
       rentType: dto.rentType ?? 'long',
-      area: typeof dto.area === 'number' ? dto.area : 0,
-      rooms: typeof dto.rooms === 'number' ? dto.rooms : 0,
+
+      area: typeof dto.area === 'number' ? dto.area : null,
+      rooms: typeof dto.rooms === 'number' ? dto.rooms : null,
+
       availableFrom: dto.availableFrom ?? toISODateOnly(new Date()),
 
-      kitchen: Boolean(dto.kitchen),
-      pets: Boolean(dto.pets),
-      lift: Boolean(dto.lift),
-      parking: Boolean(dto.parking),
-      furnished: Boolean(dto.furnished),
-      balcony: Boolean(dto.balcony),
-      storage: Boolean(dto.storage),
+      kitchen: dto.kitchen ?? false,
+      pets: dto.pets ?? false,
+      lift: dto.lift ?? false,
+      parking: dto.parking ?? false,
+      furnished: dto.furnished ?? false,
+      balcony: dto.balcony ?? false,
+      storage: dto.storage ?? false,
     };
 
     listings.unshift(listing);
@@ -83,8 +108,10 @@ export class ListingsService {
 
       buildingType: dto.buildingType ?? current.buildingType,
       rentType: dto.rentType ?? current.rentType,
-      area: typeof dto.area === 'number' ? dto.area : current.area,
-      rooms: typeof dto.rooms === 'number' ? dto.rooms : current.rooms,
+
+      area: patchNullableNumber(dto, 'area', current.area),
+      rooms: patchNullableNumber(dto, 'rooms', current.rooms),
+
       availableFrom: dto.availableFrom ?? current.availableFrom,
 
       kitchen: typeof dto.kitchen === 'boolean' ? dto.kitchen : current.kitchen,

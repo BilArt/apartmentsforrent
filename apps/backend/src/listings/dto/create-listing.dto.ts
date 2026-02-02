@@ -1,14 +1,14 @@
 import {
   ArrayMaxSize,
   IsArray,
-  IsBoolean,
-  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
   Min,
   ValidateNested,
+  IsBoolean,
+  IsIn,
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -22,17 +22,14 @@ export class CityDto {
 
   @IsOptional()
   @IsString()
-  @IsNotEmpty()
   nameUk?: string;
 
   @IsOptional()
   @IsString()
-  @IsNotEmpty()
   admin1?: string;
 
   @IsOptional()
   @IsString()
-  @IsNotEmpty()
   admin2?: string;
 
   @IsNumber()
@@ -79,13 +76,11 @@ export class CreateListingDto {
 
   @IsOptional()
   @IsNumber()
-  @Min(0)
-  area?: number;
+  area?: number | null;
 
   @IsOptional()
   @IsNumber()
-  @Min(0)
-  rooms?: number;
+  rooms?: number | null;
 
   @IsOptional()
   @IsString()
