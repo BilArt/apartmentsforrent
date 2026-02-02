@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:16
+    container_name: afr_postgres
+    restart: unless-stopped
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: afr
+      POSTGRES_PASSWORD: afrpass
+      POSTGRES_DB: apartmentsforrent
+    volumes:
+      - afr_pgdata:/var/lib/postgresql/data
+
+volumes:
+  afr_pgdata:
