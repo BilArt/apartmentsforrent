@@ -87,6 +87,7 @@ function parseISODate(value) {
   const d = Number(m[3]);
 
   const dt = new Date(y, mo, d);
+  // доп. проверка на “32-е число”
   if (dt.getFullYear() !== y || dt.getMonth() !== mo || dt.getDate() !== d)
     return null;
 
@@ -184,7 +185,6 @@ export default function ListingsPage({
     };
   }, []);
 
-  // если разлогинился и был включен fav-режим — вырубаем
   useEffect(() => {
     if (!canFavorite && onlyFav) {
       const next = new URLSearchParams(sp);
@@ -222,6 +222,8 @@ export default function ListingsPage({
     filters.storage,
     onlyFav,
   ]);
+
+  const hasAnyFavorites = canFavorite && favoriteSet.size > 0;
 
   const itemsWithFav = useMemo(() => {
     return items.map((x) => ({
@@ -364,6 +366,16 @@ export default function ListingsPage({
     return Array.from({ length: max }).map((_, i) => i + 1);
   }, [totalPages]);
 
+  const emptyText = useMemo(() => {
+    if (onlyFav) {
+      if (!canFavorite) return "Увійди, щоб користуватись обраним.";
+      if (!hasAnyFavorites)
+        return "У тебе поки що немає обраних. Натисни ❤️ на оголошенні.";
+      return "У обраних нічого не знайдено за цими фільтрами.";
+    }
+    return "Нічого не знайдено за цими фільтрами.";
+  }, [onlyFav, canFavorite, hasAnyFavorites]);
+
   return (
     <div className={styles.page}>
       <div className="container">
@@ -425,6 +437,12 @@ export default function ListingsPage({
               </div>
             )}
 
+            {onlyFav && canFavorite && !hasAnyFavorites && (
+              <div style={{ padding: "0 0 12px", opacity: 0.7 }}>
+                У тебе поки що немає обраних. Натисни ❤️ на оголошенні.
+              </div>
+            )}
+
             <div className={styles.grid}>
               {pageItems.map((l) => (
                 <ListingCard
@@ -437,38 +455,36 @@ export default function ListingsPage({
             </div>
 
             {filtered.length === 0 && (
-              <div style={{ padding: 16, opacity: 0.7 }}>
-                {onlyFav
-                  ? "Поки що немає обраних оголошень."
-                  : "Нічого не знайдено за цими фільтрами."}
-              </div>
+              <div style={{ padding: 16, opacity: 0.7 }}>{emptyText}</div>
             )}
 
-            <div
-              className={styles.pagination}
-              role="navigation"
-              aria-label="Pagination"
-            >
-              {pagesToShow.map((p) => {
-                const active = p === safePage;
-                return (
-                  <button
-                    key={p}
-                    type="button"
-                    className={active ? styles.pageBtnActive : styles.pageBtn}
-                    onClick={() => goToPage(p)}
-                    aria-current={active ? "page" : undefined}
-                    disabled={active}
-                  >
-                    {p}
-                  </button>
-                );
-              })}
+            {filtered.length > 0 && (
+              <div
+                className={styles.pagination}
+                role="navigation"
+                aria-label="Pagination"
+              >
+                {pagesToShow.map((p) => {
+                  const active = p === safePage;
+                  return (
+                    <button
+                      key={p}
+                      type="button"
+                      className={active ? styles.pageBtnActive : styles.pageBtn}
+                      onClick={() => goToPage(p)}
+                      aria-current={active ? "page" : undefined}
+                      disabled={active}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
 
-              {totalPages > pagesToShow[pagesToShow.length - 1] && (
-                <span className={styles.dots}>…</span>
-              )}
-            </div>
+                {totalPages > pagesToShow[pagesToShow.length - 1] && (
+                  <span className={styles.dots}>…</span>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>

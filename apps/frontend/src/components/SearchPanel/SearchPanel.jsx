@@ -18,7 +18,7 @@ const BUILDING_TYPES = [
 const RENT_TYPES = [
   { id: "", label: "Обрати" },
   { id: "long", label: "Довгостроково" },
-  { id: "short", label: "Подобово" },
+  { id: "daily", label: "Подобово" },
 ];
 
 function pad2(n) {
@@ -53,6 +53,11 @@ function parseISODate(s) {
   const da = Number(m[3]);
 
   const d = new Date(y, mo, da);
+  if (Number.isNaN(d.getTime())) return null;
+
+  if (d.getFullYear() !== y || d.getMonth() !== mo || d.getDate() !== da)
+    return null;
+
   return startOfDay(d);
 }
 
@@ -136,7 +141,6 @@ export default function SearchPanel() {
   const today = useMemo(() => startOfDay(new Date()), []);
 
   const initial = readInitial(sp);
-
   const [form, dispatch] = useReducer(formReducer, initial);
 
   useEffect(() => {
@@ -202,15 +206,13 @@ export default function SearchPanel() {
     setBool("storage", form.storage);
 
     p.set("page", "1");
+
     setSp(p, { replace: false });
     setOpenId(null);
   };
 
   const clear = () => {
-    const p = new URLSearchParams();
-    if (sp.get("fav") === "1") p.set("fav", "1");
-    setSp(p, { replace: false });
-
+    setSp(new URLSearchParams(), { replace: false });
     setOpenId(null);
   };
 

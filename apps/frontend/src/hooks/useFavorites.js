@@ -1,15 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { favoritesApi } from '../api/favorites';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { favoritesApi } from "../api/favorites";
 
 function normalizeFavoriteIds(payload) {
-  const ids = Array.isArray(payload)
-    ? payload
-        .map((x) =>
-          typeof x === 'string' ? x : (x?.listingId ?? x?.id ?? null),
-        )
-        .filter(Boolean)
-    : [];
-  return ids.map(String);
+  const arr = Array.isArray(payload) ? payload : [];
+
+  return arr
+    .map((x) => (typeof x === "string" ? x : (x?.listingId ?? x?.id ?? null)))
+    .filter(Boolean)
+    .map(String);
 }
 
 export function useFavorites(currentUser) {
@@ -18,22 +16,30 @@ export function useFavorites(currentUser) {
   const [favoriteIds, setFavoriteIds] = useState([]);
   const [favLoading, setFavLoading] = useState(false);
 
+  const reqSeq = useRef(0);
+
   const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
 
   const reloadFavorites = useCallback(async () => {
+    const seq = ++reqSeq.current;
+
     if (!canFavorite) {
       setFavoriteIds([]);
+      setFavLoading(false);
       return;
     }
 
     setFavLoading(true);
     try {
       const fav = await favoritesApi.getMy();
+      if (seq !== reqSeq.current) return;
+
       setFavoriteIds(normalizeFavoriteIds(fav));
     } catch {
+      if (seq !== reqSeq.current) return;
       setFavoriteIds([]);
     } finally {
-      setFavLoading(false);
+      if (seq === reqSeq.current) setFavLoading(false);
     }
   }, [canFavorite]);
 
@@ -47,21 +53,22 @@ export function useFavorites(currentUser) {
 
       const key = String(listingId);
 
-      let optimisticIsFav = false;
+      let nextIsFavorite = false;
+
       setFavoriteIds((prev) => {
         const set = new Set(prev);
         if (set.has(key)) {
           set.delete(key);
-          optimisticIsFav = false;
+          nextIsFavorite = false;
         } else {
           set.add(key);
-          optimisticIsFav = true;
+          nextIsFavorite = true;
         }
         return Array.from(set);
       });
 
       try {
-        const res = await favoritesApi.toggle(listingId);
+        const res = await favoritesApi.toggle(key);
         const isFavorite = Boolean(res?.isFavorite);
 
         setFavoriteIds((prev) => {
@@ -73,12 +80,11 @@ export function useFavorites(currentUser) {
 
         return { isFavorite };
       } catch {
-        // откат + попытка синка
         await reloadFavorites();
-        return { isFavorite: optimisticIsFav };
+        return { isFavorite: nextIsFavorite };
       }
     },
-    [canFavorite, reloadFavorites],
+    [canFavorite, reloadFavorites]
   );
 
   return {
