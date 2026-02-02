@@ -26,6 +26,7 @@ import ListingForm from "./components/ListingForm/ListingForm";
 import ViewingRequestForm from "./components/ViewingRequestForm/ViewingRequestForm";
 
 import RequireAuth from "./components/RequireAuth/RequireAuth";
+import { useFavorites } from "./hooks/useFavorites";
 
 function App() {
   const navigate = useNavigate();
@@ -79,6 +80,10 @@ function App() {
       alive = false;
     };
   }, []);
+
+  // ✅ общий favorites state
+  const { canFavorite, favoriteSet, toggleFavorite } =
+    useFavorites(currentUser);
 
   const handleRegistered = (user) => {
     setCurrentUser(user);
@@ -172,13 +177,27 @@ function App() {
 
       <Routes>
         <Route path="/" element={<HomePage />} />
+
         <Route
           path="/listings"
-          element={<ListingsPage currentUser={currentUser} />}
+          element={
+            <ListingsPage
+              canFavorite={canFavorite}
+              favoriteSet={favoriteSet}
+              onToggleFavorite={toggleFavorite}
+            />
+          }
         />
+
         <Route
           path="/favorites"
-          element={<FavoritesPage currentUser={currentUser} />}
+          element={
+            <FavoritesPage
+              canFavorite={canFavorite}
+              favoriteSet={favoriteSet}
+              onToggleFavorite={toggleFavorite}
+            />
+          }
         />
 
         <Route

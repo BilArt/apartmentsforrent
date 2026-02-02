@@ -5,17 +5,16 @@ import styles from "./FavoritesPage.module.scss";
 import SearchPanel from "../../components/SearchPanel/SearchPanel";
 import ListingCard from "../../components/ListingCard/ListingCard";
 import { listingsApi } from "../../api/listings";
-import { favoritesApi } from "../../api/favorites";
 
-function extractFavIds(payload) {
-  if (!Array.isArray(payload)) return [];
-  return payload
-    .map((x) => (typeof x === "string" ? x : (x?.listingId ?? x?.id ?? null)))
-    .filter(Boolean)
-    .map(String);
+function normalizeListing(x) {
+  return { ...x };
 }
 
-export default function FavoritesPage({ currentUser } = {}) {
+export default function FavoritesPage({
+  canFavorite = false,
+  favoriteSet = new Set(),
+  onToggleFavorite,
+} = {}) {
   const navigate = useNavigate();
   const resultsRef = useRef(null);
 
@@ -23,116 +22,64 @@ export default function FavoritesPage({ currentUser } = {}) {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
 
-  const canFavorite = Boolean(currentUser?.id);
-
-  const allListingsRef = useRef(null);
-
-  const fetchFavoritesData = useCallback(
-    async (signal) => {
-      if (!canFavorite) {
-        return { items: [], error: "" };
-      }
-
-      const fav = await favoritesApi.getMy();
-      if (signal?.aborted) return null;
-
-      const favIds = extractFavIds(fav);
-      const favSet = new Set(favIds);
-
-      if (favSet.size === 0) {
-        return { items: [], error: "" };
-      }
-
-      let all = allListingsRef.current;
-      if (!Array.isArray(all)) {
-        const data = await listingsApi.getAll();
-        if (signal?.aborted) return null;
-        all = Array.isArray(data) ? data : [];
-        allListingsRef.current = all;
-      }
-
-      const onlyFav = all
-        .filter((x) => favSet.has(String(x.id)))
-        .map((x) => ({ ...x, isFavorite: true }));
-
-      return { items: onlyFav, error: "" };
-    },
-    [canFavorite]
-  );
-
   useEffect(() => {
-    const controller = new AbortController();
+    let alive = true;
 
     (async () => {
       try {
         setStatus("loading");
         setError("");
 
-        const res = await fetchFavoritesData(controller.signal);
-        if (!res || controller.signal.aborted) return;
+        if (!canFavorite) {
+          setItems([]);
+          setStatus("ok");
+          return;
+        }
 
-        setItems(res.items);
+        const data = await listingsApi.getAll();
+        if (!alive) return;
+
+        const all = Array.isArray(data) ? data : [];
+        const onlyFav = all
+          .filter((x) => favoriteSet.has(String(x.id)))
+          .map((x) => ({ ...normalizeListing(x), isFavorite: true }));
+
+        setItems(onlyFav);
         setStatus("ok");
       } catch (e) {
-        if (controller.signal.aborted) return;
+        if (!alive) return;
         setStatus("error");
         setError(e?.message || "Failed to load favorites");
       }
     })();
 
-    return () => controller.abort();
-  }, [fetchFavoritesData, currentUser?.id]);
+    return () => {
+      alive = false;
+    };
+  }, [canFavorite, favoriteSet]);
 
-  const refreshFavorites = useCallback(async () => {
-    const controller = new AbortController();
-    try {
-      setStatus("loading");
-      setError("");
-      const res = await fetchFavoritesData(controller.signal);
-      if (!res) return;
-      setItems(res.items);
-      setStatus("ok");
-    } catch {
-      // 
-    }
-  }, [fetchFavoritesData]);
+  // если favoriteSet изменился — синкаем items (без лишних загрузок)
+  useEffect(() => {
+    if (!canFavorite) return;
+
+    setItems((prev) =>
+      prev
+        .filter((x) => favoriteSet.has(String(x.id)))
+        .map((x) => ({ ...x, isFavorite: true }))
+    );
+  }, [canFavorite, favoriteSet]);
 
   const onToggleFav = useCallback(
     async (listingId) => {
       if (!canFavorite) return;
-
-      setItems((prev) =>
-        prev.filter((x) => String(x.id) !== String(listingId))
-      );
-
-      try {
-        const res = await favoritesApi.toggle(listingId);
-        const isFavorite = Boolean(res?.isFavorite);
-
-        if (!isFavorite) return;
-
-        let all = allListingsRef.current;
-        if (!Array.isArray(all)) {
-          const data = await listingsApi.getAll();
-          all = Array.isArray(data) ? data : [];
-          allListingsRef.current = all;
-        }
-
-        const found = all.find((x) => String(x.id) === String(listingId));
-        if (found) {
-          setItems((prev) => [{ ...found, isFavorite: true }, ...prev]);
-        } else {
-          await refreshFavorites();
-        }
-      } catch {
-        await refreshFavorites();
-      }
+      await onToggleFavorite?.(listingId);
+      // items обновятся эффектом выше
     },
-    [canFavorite, refreshFavorites]
+    [canFavorite, onToggleFavorite]
   );
 
   const isEmpty = status === "ok" && items.length === 0;
-  const title = useMemo(() => "Обране", []);
+  const title = useMemo(() => `Обране`, []);
 
   return (
     <div className={styles.page}>

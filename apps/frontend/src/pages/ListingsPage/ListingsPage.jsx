@@ -5,7 +5,6 @@ import SearchPanel from "../../components/SearchPanel/SearchPanel";
 import ListingCard from "../../components/ListingCard/ListingCard";
 import styles from "./ListingsPage.module.scss";
 import { listingsApi } from "../../api/listings";
-import { favoritesApi } from "../../api/favorites";
 
 function toInt(v, def = 0) {
   const n = Number(v);
@@ -75,8 +74,6 @@ function normalizeListing(x) {
     furnished: Boolean(x?.furnished),
     balcony: Boolean(x?.balcony),
     storage: Boolean(x?.storage),
-
-    isFavorite: false,
   };
 }
 
@@ -103,18 +100,11 @@ function startOfDay(d) {
   return x;
 }
 
-function normalizeFavoriteIds(payload) {
-  const ids = Array.isArray(payload)
-    ? payload
-        .map((x) =>
-          typeof x === "string" ? x : (x?.listingId ?? x?.id ?? null)
-        )
-        .filter(Boolean)
-    : [];
-  return ids.map(String);
-}
-
-export default function ListingsPage({ currentUser } = {}) {
+export default function ListingsPage({
+  canFavorite = false,
+  favoriteSet = new Set(),
+  onToggleFavorite,
+} = {}) {
   const [sp, setSp] = useSearchParams();
   const resultsRef = useRef(null);
 
@@ -126,7 +116,6 @@ export default function ListingsPage({ currentUser } = {}) {
   const perPage = 8;
 
   const onlyFav = sp.get("fav") === "1";
-  const canFavorite = Boolean(currentUser?.id);
 
   const filters = useMemo(() => {
     const city = (sp.get("city") || "").trim().toLowerCase();
@@ -181,30 +170,7 @@ export default function ListingsPage({ currentUser } = {}) {
         const normalized = (Array.isArray(data) ? data : []).map(
           normalizeListing
         );
-
-        if (!canFavorite) {
-          setItems(normalized);
-          setStatus("ok");
-          return;
-        }
-
-        let favIds = [];
-        try {
-          const fav = await favoritesApi.getMy();
-          favIds = normalizeFavoriteIds(fav);
-        } catch {
-          favIds = [];
-        }
-
-        const favSet = new Set(favIds);
-
-        setItems(
-          normalized.map((x) => ({
-            ...x,
-            isFavorite: favSet.has(String(x.id)),
-          }))
-        );
-
+        setItems(normalized);
         setStatus("ok");
       } catch (e) {
         if (!alive) return;
@@ -216,8 +182,9 @@ export default function ListingsPage({ currentUser } = {}) {
     return () => {
       alive = false;
     };
-  }, [canFavorite, currentUser?.id]);
+  }, []);
 
+  // если разлогинился и был включен fav-режим — вырубаем
   useEffect(() => {
     if (!canFavorite && onlyFav) {
       const next = new URLSearchParams(sp);
@@ -256,8 +223,15 @@ export default function ListingsPage({ currentUser } = {}) {
     onlyFav,
   ]);
 
+  const itemsWithFav = useMemo(() => {
+    return items.map((x) => ({
+      ...x,
+      isFavorite: canFavorite ? favoriteSet.has(String(x.id)) : false,
+    }));
+  }, [items, favoriteSet, canFavorite]);
+
   const filtered = useMemo(() => {
-    return items.filter((l) => {
+    return itemsWithFav.filter((l) => {
       if (onlyFav && !l?.isFavorite) return false;
 
       if (filters.city) {
@@ -329,7 +303,7 @@ export default function ListingsPage({ currentUser } = {}) {
 
       return true;
     });
-  }, [items, onlyFav, filters]);
+  }, [itemsWithFav, onlyFav, filters]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const safePage = Math.min(page, totalPages);
@@ -380,33 +354,9 @@ export default function ListingsPage({ currentUser } = {}) {
   const onToggleFav = useCallback(
     async (listingId) => {
       if (!canFavorite) return;
-
-      try {
-        const res = await favoritesApi.toggle(listingId);
-        const isFavorite = Boolean(res?.isFavorite);
-
-        setItems((prev) =>
-          prev.map((x) =>
-            String(x.id) === String(listingId) ? { ...x, isFavorite } : x
-          )
-        );
-      } catch {
-        try {
-          const fav = await favoritesApi.getMy();
-          const favSet = new Set(normalizeFavoriteIds(fav));
-
-          setItems((prev) =>
-            prev.map((x) => ({
-              ...x,
-              isFavorite: favSet.has(String(x.id)),
-            }))
-          );
-        } catch {
-          //
-        }
-      }
+      await onToggleFavorite?.(listingId);
     },
-    [canFavorite]
+    [canFavorite, onToggleFavorite]
   );
 
   const pagesToShow = useMemo(() => {
