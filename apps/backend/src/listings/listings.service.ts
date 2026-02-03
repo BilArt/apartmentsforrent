@@ -2,9 +2,17 @@ import { Injectable } from '@nestjs/common';
 import { listings, type Listing } from './listings.store';
 import type { CreateListingDto } from './dto/create-listing.dto';
 import type { UpdateListingDto } from './dto/update-listing.dto';
+import { prisma } from '../db/prisma';
 
 type GetAllFilter = {
   cityId?: string;
+};
+
+export type OwnerPublic = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  rating: number;
 };
 
 function toISODateOnly(d: Date) {
@@ -31,7 +39,6 @@ function patchNullableNumber(
   const v = dto[key];
 
   if (typeof v === 'number') return v;
-
   if (v === null) return null;
 
   return current;
@@ -39,12 +46,28 @@ function patchNullableNumber(
 
 @Injectable()
 export class ListingsService {
+  async getOwnersMap(
+    ownerIds: Array<string | null | undefined>,
+  ): Promise<Map<string, OwnerPublic>> {
+    const ids = Array.from(
+      new Set(ownerIds.filter((x): x is string => Boolean(x))),
+    );
+    if (ids.length === 0) return new Map();
+
+    const users = await prisma.user.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, firstName: true, lastName: true, rating: true },
+    });
+
+    return new Map(users.map((u) => [u.id, u]));
+  }
+
   getAll(filter: GetAllFilter = {}) {
     const cityId = filter.cityId ? Number(filter.cityId) : null;
 
     const res = listings.filter((l) => l.status === 'ACTIVE');
-
     if (!cityId) return res;
+
     return res.filter((l) => l.city.geonameId === cityId);
   }
 

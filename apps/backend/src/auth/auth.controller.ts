@@ -8,26 +8,28 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request } from 'express';
-import { AuthService } from './auth.service';
-import { LoginDto } from '../listings/dto/login.dto';
-import { RegisterDto } from '../listings/dto/register.dto';
+import { AuthService, type PublicUser } from './auth.service';
 import { SessionGuard } from './session.guard';
-import type { User } from './users.store';
+import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly auth: AuthService) {}
 
   @Post('register')
-  register(@Body() body: RegisterDto, @Req() req: Request): User {
-    const user = this.auth.register(body);
+  async register(
+    @Body() body: RegisterDto,
+    @Req() req: Request,
+  ): Promise<PublicUser> {
+    const user = await this.auth.register(body);
     req.session.userId = user.id;
     return user;
   }
 
   @Post('login')
-  login(@Body() dto: LoginDto, @Req() req: Request): User {
-    const user = this.auth.login(dto.bankId);
+  async login(@Body() dto: LoginDto, @Req() req: Request): Promise<PublicUser> {
+    const user = await this.auth.login(dto.bankId);
     req.session.userId = user.id;
     return user;
   }
@@ -41,9 +43,13 @@ export class AuthController {
 
   @UseGuards(SessionGuard)
   @Get('me')
-  me(@Req() req: Request): User {
+  async me(@Req() req: Request): Promise<PublicUser> {
     const userId = req.session.userId;
     if (!userId) throw new UnauthorizedException('Not authenticated');
-    return this.auth.getById(userId)!;
+
+    const user = await this.auth.getById(String(userId));
+    if (!user) throw new UnauthorizedException('Not authenticated');
+
+    return user;
   }
 }

@@ -1,42 +1,86 @@
 import {
-  Injectable,
   BadRequestException,
+  Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { users, User } from './users.store';
+import { prisma } from '../db/prisma';
 
-function makeId() {
-  return crypto.randomUUID();
-}
+export type PublicUser = {
+  id: string;
+  bankId: string;
+  rating: number;
+  firstName: string;
+  lastName: string;
+  phone: string;
+};
 
 @Injectable()
 export class AuthService {
-  register(data: Omit<User, 'id' | 'rating'>) {
-    const exists = users.find((u) => u.bankId === data.bankId);
-    if (exists)
+  async register(data: {
+    bankId: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+  }): Promise<PublicUser> {
+    const exists = await prisma.user.findUnique({
+      where: { bankId: data.bankId },
+      select: { id: true },
+    });
+
+    if (exists) {
       throw new BadRequestException('User with this bankId already exists');
+    }
 
-    const user: User = {
-      id: makeId(),
-      rating: 0,
-      ...data,
-    };
+    const user = await prisma.user.create({
+      data: {
+        id: crypto.randomUUID(),
+        bankId: data.bankId,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        phone: data.phone,
+        rating: 0,
+      },
+      select: {
+        id: true,
+        bankId: true,
+        rating: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+      },
+    });
 
-    users.push(user);
     return user;
   }
 
-  login(bankId: string) {
-    const user = users.find((u) => u.bankId === bankId);
+  async login(bankId: string): Promise<PublicUser> {
+    const user = await prisma.user.findUnique({
+      where: { bankId },
+      select: {
+        id: true,
+        bankId: true,
+        rating: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+      },
+    });
+
     if (!user) throw new UnauthorizedException('User not found');
     return user;
   }
 
-  getById(id: string) {
-    return users.find((u) => u.id === id);
-  }
-
-  getAll() {
-    return users;
+  async getById(id: string): Promise<PublicUser | null> {
+    return prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        bankId: true,
+        rating: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+      },
+    });
   }
 }

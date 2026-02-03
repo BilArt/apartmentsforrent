@@ -17,14 +17,40 @@ function isoDatePlusDays(days: number) {
 async function main() {
   const u1 = await prisma.user.upsert({
     where: { id: 'u1' },
-    update: { name: 'Artem' },
-    create: { id: 'u1', name: 'Artem' },
+    update: {
+      bankId: 'BANK-u1',
+      firstName: 'Artem',
+      lastName: 'Bilousov',
+      phone: '+45 00 00 00 01',
+      rating: 4.8,
+    },
+    create: {
+      id: 'u1',
+      bankId: 'BANK-u1',
+      firstName: 'Artem',
+      lastName: 'Bilousov',
+      phone: '+45 00 00 00 01',
+      rating: 4.8,
+    },
   });
 
-  const u2 = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { id: 'u2' },
-    update: { name: 'Anastasiia' },
-    create: { id: 'u2', name: 'Anastasiia' },
+    update: {
+      bankId: 'BANK-u2',
+      firstName: 'Anastasiia',
+      lastName: 'Bilousova',
+      phone: '+45 00 00 00 02',
+      rating: 4.9,
+    },
+    create: {
+      id: 'u2',
+      bankId: 'BANK-u2',
+      firstName: 'Anastasiia',
+      lastName: 'Bilousova',
+      phone: '+45 00 00 00 02',
+      rating: 4.9,
+    },
   });
 
   const cities = [
@@ -76,7 +102,9 @@ async function main() {
     });
   }
 
-  console.log(`Seeded ${total} listings + favorites for u1`);
+  console.log(
+    `Seeded: users(u1,u2), listings(${total}), favorites(${some.length}) for u1`,
+  );
 }
 
 main()

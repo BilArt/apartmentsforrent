@@ -15,37 +15,29 @@ import {
 import type { Request } from 'express';
 
 import { SessionGuard } from '../auth/session.guard';
-import { users, type User } from '../auth/users.store';
 import type { Listing } from './listings.store';
-import { ListingsService } from './listings.service';
+import { ListingsService, type OwnerPublic } from './listings.service';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 
 type ListingWithOwner = Listing & {
-  owner: Pick<User, 'id' | 'firstName' | 'lastName' | 'rating'> | null;
+  owner: OwnerPublic | null;
   landlordName: string;
   landlordRating: number;
 };
 
-function enrichListing(listing: Listing): ListingWithOwner {
-  const owner = users.find((u) => u.id === listing.ownerId);
-
+function enrichListing(
+  listing: Listing,
+  owner: OwnerPublic | null,
+): ListingWithOwner {
   const landlordName = owner
     ? `${owner.firstName} ${owner.lastName}`
     : 'Орендодавець';
-
   const landlordRating = owner?.rating ?? 0;
 
   return {
     ...listing,
-    owner: owner
-      ? {
-          id: owner.id,
-          firstName: owner.firstName,
-          lastName: owner.lastName,
-          rating: owner.rating,
-        }
-      : null,
+    owner,
     landlordName,
     landlordRating,
   };
@@ -56,38 +48,47 @@ export class ListingsController {
   constructor(private readonly listings: ListingsService) {}
 
   @Get()
-  getAll(@Query('cityId') cityId?: string): ListingWithOwner[] {
-    return this.listings.getAll({ cityId }).map(enrichListing);
+  async getAll(@Query('cityId') cityId?: string): Promise<ListingWithOwner[]> {
+    const items = this.listings.getAll({ cityId });
+    const ownersMap = await this.listings.getOwnersMap(
+      items.map((l) => l.ownerId),
+    );
+    return items.map((l) => enrichListing(l, ownersMap.get(l.ownerId) ?? null));
   }
 
   @UseGuards(SessionGuard)
   @Get('my')
-  my(@Req() req: Request): ListingWithOwner[] {
-    const userId = req.session.userId!;
-    return this.listings.getByOwner(userId).map(enrichListing);
+  async my(@Req() req: Request): Promise<ListingWithOwner[]> {
+    const userId = String(req.session.userId);
+    const items = this.listings.getByOwner(userId);
+    const ownersMap = await this.listings.getOwnersMap(
+      items.map((l) => l.ownerId),
+    );
+    return items.map((l) => enrichListing(l, ownersMap.get(l.ownerId) ?? null));
   }
 
   @UseGuards(SessionGuard)
   @Patch(':id')
-  update(
+  async update(
     @Param('id') id: string,
     @Req() req: Request,
     @Body() dto: UpdateListingDto,
-  ): ListingWithOwner {
-    const ownerId = req.session.userId!;
+  ): Promise<ListingWithOwner> {
+    const ownerId = String(req.session.userId);
     const res = this.listings.update(id, ownerId, dto);
 
     if (res === null) throw new NotFoundException('Listing not found');
     if (res === 'FORBIDDEN')
       throw new ForbiddenException('You can edit only your listings');
 
-    return enrichListing(res);
+    const ownersMap = await this.listings.getOwnersMap([res.ownerId]);
+    return enrichListing(res, ownersMap.get(res.ownerId) ?? null);
   }
 
   @UseGuards(SessionGuard)
   @Delete(':id')
   remove(@Param('id') id: string, @Req() req: Request): { ok: true } {
-    const ownerId = req.session.userId!;
+    const ownerId = String(req.session.userId);
     const res = this.listings.delete(id, ownerId);
 
     if (res === null) throw new NotFoundException('Listing not found');
@@ -98,7 +99,10 @@ export class ListingsController {
   }
 
   @Get(':id')
-  getOne(@Param('id') id: string, @Req() req: Request): ListingWithOwner {
+  async getOne(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<ListingWithOwner> {
     const listing = this.listings.getById(id);
     if (!listing) throw new NotFoundException('Listing not found');
 
@@ -111,16 +115,18 @@ export class ListingsController {
       throw new NotFoundException('Listing not found');
     }
 
-    return enrichListing(listing);
+    const ownersMap = await this.listings.getOwnersMap([listing.ownerId]);
+    return enrichListing(listing, ownersMap.get(listing.ownerId) ?? null);
   }
 
   @UseGuards(SessionGuard)
   @Post()
-  create(
+  async create(
     @Req() req: Request,
     @Body() body: CreateListingDto,
-  ): ListingWithOwner {
-    const created = this.listings.create(req.session.userId!, body);
-    return enrichListing(created);
+  ): Promise<ListingWithOwner> {
+    const created = this.listings.create(String(req.session.userId), body);
+    const ownersMap = await this.listings.getOwnersMap([created.ownerId]);
+    return enrichListing(created, ownersMap.get(created.ownerId) ?? null);
   }
 }
