@@ -4,7 +4,6 @@ export type User = {
   firstName: string;
   lastName: string;
   phone: string;
-  bankId: string;
 };
 
 export const users: User[] = [
@@ -14,7 +13,6 @@ export const users: User[] = [
     firstName: 'Олена',
     lastName: 'Коваль',
     phone: '+380 67 111 11 11',
-    bankId: 'SEED-BANKID-1',
   },
   {
     id: 'seed-owner-2',
@@ -22,7 +20,6 @@ export const users: User[] = [
     firstName: 'Ігор',
     lastName: 'Мельник',
     phone: '+380 67 222 22 22',
-    bankId: 'SEED-BANKID-2',
   },
   {
     id: 'seed-owner-3',
@@ -30,7 +27,6 @@ export const users: User[] = [
     firstName: 'Марія',
     lastName: 'Савчук',
     phone: '+380 67 333 33 33',
-    bankId: 'SEED-BANKID-3',
   },
   {
     id: 'seed-tenant-1',
@@ -38,6 +34,5 @@ export const users: User[] = [
     firstName: 'Паша',
     lastName: 'Каштан',
     phone: '+380 67 999 99 99',
-    bankId: 'SEED-BANKID-TENANT-1',
   },
 ];

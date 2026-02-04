@@ -15,19 +15,22 @@ import {
 import type { Request } from 'express';
 
 import { SessionGuard } from '../auth/session.guard';
-import type { Listing } from './listings.store';
-import { ListingsService, type OwnerPublic } from './listings.service';
+import {
+  ListingsService,
+  type OwnerPublic,
+  type ListingDb,
+} from './listings.service';
 import { CreateListingDto } from './dto/create-listing.dto';
 import { UpdateListingDto } from './dto/update-listing.dto';
 
-type ListingWithOwner = Listing & {
+type ListingWithOwner = ListingDb & {
   owner: OwnerPublic | null;
   landlordName: string;
   landlordRating: number;
 };
 
 function enrichListing(
-  listing: Listing,
+  listing: ListingDb,
   owner: OwnerPublic | null,
 ): ListingWithOwner {
   const landlordName = owner
@@ -49,7 +52,7 @@ export class ListingsController {
 
   @Get()
   async getAll(@Query('cityId') cityId?: string): Promise<ListingWithOwner[]> {
-    const items = this.listings.getAll({ cityId });
+    const items = await this.listings.getAll({ cityId });
     const ownersMap = await this.listings.getOwnersMap(
       items.map((l) => l.ownerId),
     );
@@ -60,7 +63,7 @@ export class ListingsController {
   @Get('my')
   async my(@Req() req: Request): Promise<ListingWithOwner[]> {
     const userId = String(req.session.userId);
-    const items = this.listings.getByOwner(userId);
+    const items = await this.listings.getByOwner(userId);
     const ownersMap = await this.listings.getOwnersMap(
       items.map((l) => l.ownerId),
     );
@@ -75,7 +78,7 @@ export class ListingsController {
     @Body() dto: UpdateListingDto,
   ): Promise<ListingWithOwner> {
     const ownerId = String(req.session.userId);
-    const res = this.listings.update(id, ownerId, dto);
+    const res = await this.listings.update(id, ownerId, dto);
 
     if (res === null) throw new NotFoundException('Listing not found');
     if (res === 'FORBIDDEN')
@@ -87,9 +90,12 @@ export class ListingsController {
 
   @UseGuards(SessionGuard)
   @Delete(':id')
-  remove(@Param('id') id: string, @Req() req: Request): { ok: true } {
+  async remove(
+    @Param('id') id: string,
+    @Req() req: Request,
+  ): Promise<{ ok: true }> {
     const ownerId = String(req.session.userId);
-    const res = this.listings.delete(id, ownerId);
+    const res = await this.listings.delete(id, ownerId);
 
     if (res === null) throw new NotFoundException('Listing not found');
     if (res === 'FORBIDDEN')
@@ -103,7 +109,7 @@ export class ListingsController {
     @Param('id') id: string,
     @Req() req: Request,
   ): Promise<ListingWithOwner> {
-    const listing = this.listings.getById(id);
+    const listing = await this.listings.getById(id);
     if (!listing) throw new NotFoundException('Listing not found');
 
     const viewerId = req.session?.userId ? String(req.session.userId) : null;
@@ -125,7 +131,10 @@ export class ListingsController {
     @Req() req: Request,
     @Body() body: CreateListingDto,
   ): Promise<ListingWithOwner> {
-    const created = this.listings.create(String(req.session.userId), body);
+    const created = await this.listings.create(
+      String(req.session.userId),
+      body,
+    );
     const ownersMap = await this.listings.getOwnersMap([created.ownerId]);
     return enrichListing(created, ownersMap.get(created.ownerId) ?? null);
   }

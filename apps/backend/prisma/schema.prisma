@@ -1,50 +1,87 @@
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
-
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+}
+
+enum ContractStatus {
+  DRAFT
+  SIGNED
+  COMPLETED
+  CANCELLED
 }
 
 model User {
-  id        String     @id
-  createdAt DateTime   @default(now())
-  bankId    String     @unique
+  id        String   @id
+  createdAt DateTime @default(now())
+  bankId    String   @unique
   firstName String
   lastName  String
   phone     String
-  rating    Float      @default(0)
+  rating    Float    @default(0)
 
   favorites Favorite[]
+
+  // Listings
+  listings Listing[] @relation("UserListings")
+
+  // Requests
+  bookingRequests BookingRequest[]
+
+  // Contracts
+  contractsOwner  Contract[] @relation("ContractsOwner")
+  contractsTenant Contract[] @relation("ContractsTenant")
 }
 
 model Listing {
-  id            String    @id @default(cuid())
-  title         String
-  address       String?
-  city          Json
-  price         Int
-  area          Float?
-  rooms         Int?
+  id String @id @default(cuid())
+
+  // Owner
+  ownerId String
+  owner   User   @relation("UserListings", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  images      String[] @default([])
+
+  address String?
+  city    Json
+  price   Int
+  area    Float?
+  rooms   Int?
+
+  status String @default("ACTIVE")
 
   buildingType  String?
   rentType      String?
   availableFrom DateTime?
 
-  kitchen       Boolean   @default(false)
-  pets          Boolean   @default(false)
-  lift          Boolean   @default(false)
-  parking       Boolean   @default(false)
-  furnished     Boolean   @default(false)
-  balcony       Boolean   @default(false)
-  storage       Boolean   @default(false)
+  kitchen   Boolean @default(false)
+  pets      Boolean @default(false)
+  lift      Boolean @default(false)
+  parking   Boolean @default(false)
+  furnished Boolean @default(false)
+  balcony   Boolean @default(false)
+  storage   Boolean @default(false)
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  favorites     Favorite[]
+  favorites Favorite[]
+
+  // Requests / Contracts
+  requests  BookingRequest[]
+  contracts Contract[]
 }
 
 model Favorite {
@@ -53,10 +90,59 @@ model Favorite {
   listingId String
   createdAt DateTime @default(now())
 
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@unique([userId, listingId])
   @@index([userId])
   @@index([listingId])
+}
+
+model BookingRequest {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  listingId String
+  tenantId  String
+
+  status RequestStatus @default(PENDING)
+
+  message String?
+  from    DateTime?
+  to      DateTime?
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  tenant  User    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([tenantId])
+  @@index([listingId, tenantId])
+}
+
+model Contract {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  listingId String
+  ownerId   String
+  tenantId  String
+
+  status ContractStatus @default(DRAFT)
+
+  // ВАЖНО:
+  // Если контракт активный (SIGNED), то activeKey = listingId
+  // Если контракт не активный (DRAFT/COMPLETED/CANCELLED), то activeKey = null
+  // Это даёт гарантию на уровне БД: только один активный контракт на listing.
+  activeKey String? @unique
+
+  from DateTime?
+  to   DateTime?
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  owner   User    @relation("ContractsOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  tenant  User    @relation("ContractsTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([listingId])
+  @@index([ownerId])
+  @@index([tenantId])
 }

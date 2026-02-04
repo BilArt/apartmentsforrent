@@ -1,94 +1,301 @@
 import { Injectable } from '@nestjs/common';
-import { listings } from '../listings/listings.store';
-import { requests, type BookingRequest, RequestStatus } from './requests.store';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+
+import { prisma } from '../db/prisma';
 import type { CreateRequestDto } from './dto/create-request.dto';
 import type { UpdateRequestDto } from './dto/update-request.dto';
-import { contracts, ContractStatus } from '../contracts/contracts.store';
+
+const db: typeof prisma = prisma;
+
+export type UserPublic = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  rating: number;
+};
+
+const ALLOWED_REQUEST_STATUS = new Set([
+  'PENDING',
+  'APPROVED',
+  'REJECTED',
+  'COMPLETED',
+] as const);
+
+export type RequestStatusLiteral =
+  | 'PENDING'
+  | 'APPROVED'
+  | 'REJECTED'
+  | 'COMPLETED';
+
+function toRequestStatusLiteral(v: unknown): RequestStatusLiteral | null {
+  if (typeof v !== 'string') return null;
+  return ALLOWED_REQUEST_STATUS.has(v as RequestStatusLiteral)
+    ? (v as RequestStatusLiteral)
+    : null;
+}
+
+const ALLOWED_TRANSITIONS: Record<
+  RequestStatusLiteral,
+  RequestStatusLiteral[]
+> = {
+  PENDING: ['APPROVED', 'REJECTED'],
+  APPROVED: ['COMPLETED', 'REJECTED'],
+  REJECTED: [],
+  COMPLETED: [],
+};
+
+function canTransition(from: RequestStatusLiteral, to: RequestStatusLiteral) {
+  return ALLOWED_TRANSITIONS[from].includes(to);
+}
 
 type CreateRequestResult =
-  | BookingRequest
-  | null
+  | { ok: true; requestId: string }
+  | 'NOT_FOUND'
   | 'FORBIDDEN_SELF'
   | 'DUPLICATE'
-  | 'ALREADY_RENTED';
+  | 'ALREADY_RENTED'
+  | 'INVALID_DATES';
 
-type UpdateStatusResult = BookingRequest | null | 'FORBIDDEN';
+type UpdateStatusResult =
+  | { ok: true; requestId: string }
+  | 'NOT_FOUND'
+  | 'FORBIDDEN';
+
+export type RequestWithDetails = Awaited<
+  ReturnType<RequestsService['getById']>
+>;
+
+function parseDateLike(value: unknown): Date | null {
+  if (value == null) return null;
+  if (typeof value !== 'string') return null;
+
+  const v = value.trim();
+  if (!v) return null;
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    const d = new Date(`${v}T00:00:00.000Z`);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
 
 @Injectable()
 export class RequestsService {
-  create(
+  async create(
     listingId: string,
     tenantId: string,
     dto: CreateRequestDto,
-  ): CreateRequestResult {
-    const listing = listings.find((l) => l.id === listingId);
-    if (!listing) return null;
+  ): Promise<CreateRequestResult> {
+    const listing = await db.listing.findUnique({
+      where: { id: listingId },
+      select: { id: true, ownerId: true },
+    });
+    if (!listing) return 'NOT_FOUND';
 
     if (listing.ownerId === tenantId) return 'FORBIDDEN_SELF';
 
-    const hasSignedContract = contracts.some(
-      (c) => c.listingId === listingId && c.status === ContractStatus.SIGNED,
-    );
+    const hasSignedContract = await db.contract.findFirst({
+      where: { listingId, status: 'SIGNED' },
+      select: { id: true },
+    });
     if (hasSignedContract) return 'ALREADY_RENTED';
 
-    const exists = requests.find(
-      (r) =>
-        r.listingId === listingId &&
-        r.tenantId === tenantId &&
-        r.status === RequestStatus.PENDING,
-    );
-    if (exists) return 'DUPLICATE';
+    const from = parseDateLike(dto.from);
+    const to = parseDateLike(dto.to);
 
-    const req: BookingRequest = {
-      id: crypto.randomUUID(),
-      listingId,
-      tenantId,
-      status: RequestStatus.PENDING,
-      message: dto.message,
-      from: dto.from,
-      to: dto.to,
-      createdAt: new Date().toISOString(),
-    };
+    if ((from && !to) || (!from && to)) return 'INVALID_DATES';
 
-    requests.unshift(req);
-    return req;
+    if (from && to && from.getTime() > to.getTime()) return 'INVALID_DATES';
+
+    const existingActive = await db.bookingRequest.findFirst({
+      where: {
+        listingId,
+        tenantId,
+        status: { in: ['PENDING', 'APPROVED'] },
+      },
+      select: { id: true },
+    });
+    if (existingActive) return 'DUPLICATE';
+
+    try {
+      const created = await db.bookingRequest.create({
+        data: {
+          listingId,
+          tenantId,
+          status: 'PENDING',
+          message: dto.message ?? null,
+          from: from ?? null,
+          to: to ?? null,
+        },
+        select: { id: true },
+      });
+
+      return { ok: true, requestId: created.id };
+    } catch (e: unknown) {
+      if (e instanceof PrismaClientKnownRequestError && e.code === 'P2002') {
+        return 'DUPLICATE';
+      }
+      throw e;
+    }
   }
 
-  getMy(tenantId: string): BookingRequest[] {
-    return requests.filter((r) => r.tenantId === tenantId);
+  getMy(tenantId: string) {
+    return db.bookingRequest.findMany({
+      where: { tenantId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        tenant: {
+          select: { id: true, firstName: true, lastName: true, rating: true },
+        },
+        listing: true,
+      },
+    });
   }
 
-  getIncoming(ownerId: string): BookingRequest[] {
-    const myListingIds = new Set(
-      listings.filter((l) => l.ownerId === ownerId).map((l) => l.id),
-    );
-    return requests.filter((r) => myListingIds.has(r.listingId));
+  getIncoming(ownerId: string) {
+    return db.bookingRequest.findMany({
+      where: { listing: { ownerId } },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        tenant: {
+          select: { id: true, firstName: true, lastName: true, rating: true },
+        },
+        listing: true,
+      },
+    });
   }
 
-  updateStatus(
+  async updateStatus(
     requestId: string,
     ownerId: string,
     dto: UpdateRequestDto,
-  ): UpdateStatusResult {
-    const idx = requests.findIndex((r) => r.id === requestId);
-    if (idx === -1) return null;
+  ): Promise<UpdateStatusResult> {
+    const nextStatus = toRequestStatusLiteral(dto.status);
+    if (!nextStatus) return 'FORBIDDEN';
 
-    const current = requests[idx];
-    const listing = listings.find((l) => l.id === current.listingId);
-    if (!listing) return null;
+    return db.$transaction(async (tx) => {
+      const req = await tx.bookingRequest.findUnique({
+        where: { id: requestId },
+        select: {
+          id: true,
+          listingId: true,
+          tenantId: true,
+          status: true,
+          from: true,
+          to: true,
+        },
+      });
+      if (!req) return 'NOT_FOUND';
 
-    if (listing.ownerId !== ownerId) return 'FORBIDDEN';
+      const listing = await tx.listing.findUnique({
+        where: { id: req.listingId },
+        select: { ownerId: true },
+      });
+      if (!listing) return 'NOT_FOUND';
+      if (listing.ownerId !== ownerId) return 'FORBIDDEN';
 
-    const updated: BookingRequest = {
-      ...current,
-      status: dto.status,
-    };
+      const currentStatus = toRequestStatusLiteral(req.status);
+      if (!currentStatus) return 'FORBIDDEN';
 
-    requests[idx] = updated;
-    return updated;
+      if (!canTransition(currentStatus, nextStatus)) return 'FORBIDDEN';
+
+      if (nextStatus === 'APPROVED') {
+        await tx.bookingRequest.update({
+          where: { id: req.id },
+          data: { status: 'APPROVED' },
+          select: { id: true },
+        });
+
+        await tx.bookingRequest.updateMany({
+          where: {
+            listingId: req.listingId,
+            status: 'PENDING',
+            NOT: { id: req.id },
+          },
+          data: { status: 'REJECTED' },
+        });
+
+        try {
+          await tx.contract.create({
+            data: {
+              listingId: req.listingId,
+              ownerId: listing.ownerId,
+              tenantId: req.tenantId,
+              status: 'SIGNED',
+              from: req.from ?? null,
+              to: req.to ?? null,
+            },
+            select: { id: true },
+          });
+        } catch (e: unknown) {
+          if (e instanceof PrismaClientKnownRequestError) {
+            const meta = e.meta as { constraint?: string } | undefined;
+            if (
+              e.code === 'P2002' ||
+              meta?.constraint === 'uniq_contract_signed_per_listing'
+            ) {
+              return 'FORBIDDEN';
+            }
+          }
+          throw e;
+        }
+
+        return { ok: true, requestId: req.id };
+      }
+
+      if (nextStatus === 'COMPLETED') {
+        const updated = await tx.bookingRequest.update({
+          where: { id: req.id },
+          data: { status: 'COMPLETED' },
+          select: { id: true },
+        });
+
+        await tx.contract.updateMany({
+          where: { listingId: req.listingId, status: 'SIGNED' },
+          data: { status: 'COMPLETED' },
+        });
+
+        return { ok: true, requestId: updated.id };
+      }
+
+      if (nextStatus === 'REJECTED') {
+        const updated = await tx.bookingRequest.update({
+          where: { id: req.id },
+          data: { status: 'REJECTED' },
+          select: { id: true },
+        });
+
+        if (currentStatus === 'APPROVED') {
+          await tx.contract.updateMany({
+            where: { listingId: req.listingId, status: 'SIGNED' },
+            data: { status: 'CANCELLED' },
+          });
+        }
+
+        return { ok: true, requestId: updated.id };
+      }
+
+      const updated = await tx.bookingRequest.update({
+        where: { id: req.id },
+        data: { status: nextStatus },
+        select: { id: true },
+      });
+
+      return { ok: true, requestId: updated.id };
+    });
   }
 
-  getById(id: string): BookingRequest | undefined {
-    return requests.find((r) => r.id === id);
+  getById(id: string) {
+    return db.bookingRequest.findUnique({
+      where: { id },
+      include: {
+        tenant: {
+          select: { id: true, firstName: true, lastName: true, rating: true },
+        },
+        listing: true,
+      },
+    });
   }
 }

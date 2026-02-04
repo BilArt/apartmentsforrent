@@ -4,17 +4,22 @@ import { prisma, prismaDisconnect } from '../src/db/prisma';
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
-function randInt(min: number, max: number) {
+
+function randInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
-function isoDatePlusDays(days: number) {
+
+function isoDatePlusDays(days: number): Date {
   const d = new Date();
   d.setDate(d.getDate() + days);
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
-async function main() {
+async function main(): Promise<void> {
+  await prisma.favorite.deleteMany();
+  await prisma.listing.deleteMany();
+
   const u1 = await prisma.user.upsert({
     where: { id: 'u1' },
     update: {
@@ -34,7 +39,7 @@ async function main() {
     },
   });
 
-  await prisma.user.upsert({
+  const u2 = await prisma.user.upsert({
     where: { id: 'u2' },
     update: {
       bankId: 'BANK-u2',
@@ -67,9 +72,12 @@ async function main() {
 
   for (let i = 1; i <= total; i++) {
     const city = pick(cities);
+    const ownerId = i % 2 === 0 ? u1.id : u2.id;
 
     await prisma.listing.create({
       data: {
+        ownerId,
+
         title: `Listing #${i}`,
         address: `Street ${randInt(1, 100)}, ${city.nameUk}`,
         city,
@@ -93,14 +101,18 @@ async function main() {
     });
   }
 
-  const some = await prisma.listing.findMany({ take: 6, select: { id: true } });
-  for (const l of some) {
-    await prisma.favorite.upsert({
-      where: { userId_listingId: { userId: u1.id, listingId: l.id } },
-      update: {},
-      create: { userId: u1.id, listingId: l.id },
-    });
-  }
+  const some: Array<{ id: string }> = await prisma.listing.findMany({
+    take: 6,
+    select: { id: true },
+  });
+
+  await prisma.favorite.createMany({
+    data: some.map((l): { userId: string; listingId: string } => ({
+      userId: u1.id,
+      listingId: l.id,
+    })),
+    skipDuplicates: true,
+  });
 
   console.log(
     `Seeded: users(u1,u2), listings(${total}), favorites(${some.length}) for u1`,
@@ -108,7 +120,7 @@ async function main() {
 }
 
 main()
-  .catch((e) => {
+  .catch((e: unknown) => {
     console.error(e);
     process.exit(1);
   })
