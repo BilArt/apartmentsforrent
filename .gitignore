@@ -11,5 +11,11 @@ apps/frontend/dist
 apps/backend/node_modules
 apps/backend/dist
 
+# generated (prisma / openapi / etc)
+apps/backend/src/generated/
+
 # misc
 .DS_Store
+
+cookie*.txt
+cookies*.txt
