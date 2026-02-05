@@ -4,19 +4,18 @@ import styles from "./SearchPanel.module.scss";
 
 import CalendarDropdown from "../CalendarDropdown/CalendarDropdown";
 import calStyles from "../CalendarDropdown/CalendarDropdown.module.scss";
+import CityAutocomplete from "../CityAutocomplete/CityAutocomplete";
 
 import CalendarIcon from "../../assets/svg/calendar.svg?react";
 import ChevronDownIcon from "../../assets/svg/raw.svg?react";
 import ClearIcon from "../../assets/svg/clear.svg?react";
 
 const BUILDING_TYPES = [
-  { id: "", label: "Обрати" },
   { id: "new", label: "Новобудова" },
   { id: "old", label: "Вторинний" },
 ];
 
 const RENT_TYPES = [
-  { id: "", label: "Обрати" },
   { id: "long", label: "Довгостроково" },
   { id: "daily", label: "Подобово" },
 ];
@@ -123,7 +122,6 @@ export default function SearchPanel() {
       if (!node) return setOpenId(null);
       if (!node.contains(e.target)) setOpenId(null);
     };
-
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
   }, [openId]);
@@ -137,12 +135,11 @@ export default function SearchPanel() {
   }, []);
 
   const toggle = (id) => setOpenId((prev) => (prev === id ? null : id));
-
   const today = useMemo(() => startOfDay(new Date()), []);
 
-  const initial = readInitial(sp);
-  const [form, dispatch] = useReducer(formReducer, initial);
+  const [form, dispatch] = useReducer(formReducer, sp, readInitial);
 
+  // Sync with URL changes
   useEffect(() => {
     dispatch({ type: "replace", payload: readInitial(sp) });
   }, [sp.toString()]);
@@ -206,13 +203,14 @@ export default function SearchPanel() {
     setBool("storage", form.storage);
 
     p.set("page", "1");
-
     setSp(p, { replace: false });
     setOpenId(null);
   };
 
   const clear = () => {
-    setSp(new URLSearchParams(), { replace: false });
+    const empty = new URLSearchParams();
+    dispatch({ type: "replace", payload: readInitial(empty) });
+    setSp(empty, { replace: false });
     setOpenId(null);
   };
 
@@ -221,17 +219,18 @@ export default function SearchPanel() {
       <h1 className={styles.title}>Пошук житла</h1>
 
       <div className={styles.grid}>
-        {/* Місто */}
+        {/* Населений пункт */}
         <div className={styles.field}>
-          <label className={styles.label}>Місто</label>
+          <label className={styles.label}>Населений пункт</label>
 
           <div className={styles.control}>
-            <input
+            <CityAutocomplete
               value={form.city}
-              onChange={(e) =>
-                dispatch({ type: "patch", payload: { city: e.target.value } })
+              onChange={(val) =>
+                dispatch({ type: "patch", payload: { city: val || "" } })
               }
-              placeholder="Київ, Київська область"
+              placeholder="Обрати"
+              showLabel={false}
             />
 
             {form.city && (
@@ -249,7 +248,7 @@ export default function SearchPanel() {
           </div>
         </div>
 
-        {/* Доступно від — календарь */}
+        {/* Доступно від */}
         <div className={styles.field}>
           <label className={styles.label}>Доступно від</label>
 
@@ -490,8 +489,9 @@ function DropdownField({
 }) {
   const isOpen = openId === id;
 
-  const currentLabel =
-    options.find((o) => o.id === value)?.label ?? options[0]?.label ?? "";
+  const currentLabel = value
+    ? (options.find((o) => o.id === value)?.label ?? "Обрати")
+    : "Обрати";
 
   return (
     <div className={styles.field}>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 import styles from "./SearchBar.module.scss";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -10,17 +10,37 @@ import LocationIcon from "../../assets/svg/location.svg?react";
 import TimerIcon from "../../assets/svg/timer.svg?react";
 import LocationSmallIcon from "../../assets/svg/location.svg?react";
 
-const LAST_SEARCH = [
+const LS_LAST_CITIES = "afr:lastCities:v1";
+const LS_CITY_POP = "afr:cityPopularity:v1";
+
+const POPULAR_SEED = [
   { id: "kyiv", label: "Київ, Київська область" },
   { id: "lviv", label: "Львів, Львівська область" },
   { id: "odesa", label: "Одеса, Одеська область" },
 ];
 
-const POPULAR = [
-  { id: "kyiv2", label: "Київ, Київська область" },
-  { id: "chernivtsi", label: "Чернівці, Чернівецька область" },
-  { id: "bukovel", label: "Буковель, Івано-Франківська область" },
-];
+function loadJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function saveJson(key, value) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch (err) {
+    console.warn("localStorage error:", err);
+  }
+}
+
+function normalizeCityLabel(s) {
+  return String(s || "")
+    .trim()
+    .replace(/\s+/g, " ");
+}
 
 function pad2(n) {
   return String(n).padStart(2, "0");
@@ -38,13 +58,16 @@ function parseISODate(value) {
   if (!value || typeof value !== "string") return null;
   const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!m) return null;
+
   const y = Number(m[1]);
   const mo = Number(m[2]) - 1;
   const d = Number(m[3]);
   const dt = new Date(y, mo, d);
+
   if (dt.getFullYear() !== y || dt.getMonth() !== mo || dt.getDate() !== d) {
     return null;
   }
+
   dt.setHours(0, 0, 0, 0);
   return dt;
 }
@@ -58,25 +81,58 @@ function isSameDate(a, b) {
   );
 }
 
+function readInitialFromSearchParams(sp) {
+  const city = normalizeCityLabel(sp.get("city") || "");
+  const initialFromToday = sp.get("from") === "today";
+  const initialFromDate = parseISODate(sp.get("fromDate") || "");
+
+  return {
+    locationQuery: city,
+    locationValue: city,
+
+    fromToday: initialFromToday,
+    selectedDate: initialFromToday ? null : initialFromDate,
+
+    roomsCount: Number(sp.get("rooms") || 0),
+    kitchen: sp.get("kitchen") === "1",
+  };
+}
+
+function reducer(state, action) {
+  if (action.type === "replace") return action.payload;
+  if (action.type === "patch") return { ...state, ...action.payload };
+  return state;
+}
+
+function cityLabelFromApiItem(s) {
+  return normalizeCityLabel(s?.nameUk || s?.name || "");
+}
+
 export default function SearchBar() {
   const navigate = useNavigate();
   const [sp] = useSearchParams();
 
   const rootRef = useRef(null);
+  const locationInputRef = useRef(null);
+
   const [openId, setOpenId] = useState(null);
+  const [form, dispatch] = useReducer(reducer, sp, readInitialFromSearchParams);
 
-  const [locationQuery, setLocationQuery] = useState("");
-  const [locationValue, setLocationValue] = useState("");
-
-  const initialFromToday = sp.get("from") === "today";
-  const initialFromDate = parseISODate(sp.get("fromDate") || "");
-  const [fromToday, setFromToday] = useState(initialFromToday);
-  const [selectedDate, setSelectedDate] = useState(
-    initialFromToday ? null : initialFromDate
+  const [lastCities, setLastCities] = useState(() =>
+    loadJson(LS_LAST_CITIES, []),
   );
+  const [cityPop, setCityPop] = useState(() => loadJson(LS_CITY_POP, {}));
 
-  const [roomsCount, setRoomsCount] = useState(Number(sp.get("rooms") || 0));
-  const [kitchen, setKitchen] = useState(sp.get("kitchen") === "1");
+  const [geoItems, setGeoItems] = useState([]); // [{id,label}]
+  const [geoLoading, setGeoLoading] = useState(false);
+
+  const geoAbortRef = useRef(null);
+  const geoTimerRef = useRef(null);
+
+  useEffect(() => {
+    dispatch({ type: "replace", payload: readInitialFromSearchParams(sp) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sp.toString()]);
 
   useEffect(() => {
     const onDown = (e) => {
@@ -95,38 +151,132 @@ export default function SearchBar() {
     };
   }, []);
 
-  const filteredLocations = useMemo(() => {
-    const q = locationQuery.trim().toLowerCase();
-    if (!q) return { last: LAST_SEARCH, popular: POPULAR };
-    const all = [...LAST_SEARCH, ...POPULAR];
-    const uniq = Array.from(new Map(all.map((x) => [x.id, x])).values());
-    return {
-      last: [],
-      popular: uniq.filter((x) => x.label.toLowerCase().includes(q)),
-    };
-  }, [locationQuery]);
+  const rememberCity = (label) => {
+    const city = normalizeCityLabel(label);
+    if (!city) return;
 
-  const toggle = (id) => setOpenId((prev) => (prev === id ? null : id));
+    setLastCities((prev) => {
+      const next = [city, ...prev.filter((x) => x !== city)].slice(0, 3);
+      saveJson(LS_LAST_CITIES, next);
+      return next;
+    });
+
+    setCityPop((prev) => {
+      const next = { ...prev, [city]: (prev[city] || 0) + 1 };
+      saveJson(LS_CITY_POP, next);
+      return next;
+    });
+  };
+
+  const popularCities = useMemo(() => {
+    const entries = Object.entries(cityPop);
+    entries.sort((a, b) => b[1] - a[1]);
+    const top = entries.slice(0, 3).map(([label]) => label);
+
+    const merged = top.length ? top : POPULAR_SEED.map((x) => x.label);
+    return Array.from(new Set(merged))
+      .slice(0, 3)
+      .map((label) => ({ id: label.toLowerCase(), label }));
+  }, [cityPop]);
+
+  const lastItems = useMemo(
+    () => lastCities.map((label) => ({ id: label.toLowerCase(), label })),
+    [lastCities],
+  );
+
+  useEffect(() => {
+    const q = form.locationQuery.trim();
+
+    if (geoTimerRef.current) clearTimeout(geoTimerRef.current);
+
+    if (geoAbortRef.current) {
+      geoAbortRef.current.abort();
+      geoAbortRef.current = null;
+    }
+
+    if (q.length < 2) {
+      setGeoItems([]);
+      setGeoLoading(false);
+      return;
+    }
+
+    geoTimerRef.current = setTimeout(async () => {
+      const controller = new AbortController();
+      geoAbortRef.current = controller;
+
+      setGeoLoading(true);
+
+      try {
+        const url = new URL("/geo/ua/settlements", window.location.origin);
+        url.searchParams.set("q", q);
+        url.searchParams.set("limit", "3");
+
+        const res = await fetch(url.toString(), {
+          signal: controller.signal,
+          credentials: "include",
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        const arr = Array.isArray(data) ? data : [];
+
+        const mapped = arr
+          .map((s) => ({
+            id: String(s.id),
+            label: cityLabelFromApiItem(s),
+          }))
+          .filter((x) => x.label);
+
+        const uniq = Array.from(
+          new Map(mapped.map((x) => [x.label, x])).values(),
+        ).slice(0, 3);
+
+        setGeoItems(uniq);
+      } catch (e) {
+        if (e?.name === "AbortError") return;
+        setGeoItems([]);
+      } finally {
+        setGeoLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      if (geoTimerRef.current) clearTimeout(geoTimerRef.current);
+    };
+  }, [form.locationQuery]);
 
   const pickLocation = (item) => {
-    setLocationValue(item.label);
-    setLocationQuery(item.label);
+    dispatch({
+      type: "patch",
+      payload: { locationValue: item.label, locationQuery: item.label },
+    });
+    setGeoItems([]);
     setOpenId(null);
   };
 
   const whenLabel = useMemo(() => {
-    if (fromToday) return "Від сьогодні";
-    if (selectedDate) return formatUaDate(selectedDate);
+    if (form.fromToday) return "Від сьогодні";
+    if (form.selectedDate) return formatUaDate(form.selectedDate);
     return "Від коли";
-  }, [fromToday, selectedDate]);
+  }, [form.fromToday, form.selectedDate]);
 
   const roomsLabel = useMemo(() => {
-    if (!roomsCount) return "Кількість кімнат";
-    return `Кількість кімнат: ${roomsCount}`;
-  }, [roomsCount]);
+    if (!form.roomsCount) return "Кількість кімнат";
+    return `Кількість кімнат: ${form.roomsCount}`;
+  }, [form.roomsCount]);
 
-  const decRooms = () => setRoomsCount((v) => Math.max(0, v - 1));
-  const incRooms = () => setRoomsCount((v) => Math.min(10, v + 1));
+  const decRooms = () =>
+    dispatch({
+      type: "patch",
+      payload: { roomsCount: Math.max(0, (form.roomsCount || 0) - 1) },
+    });
+
+  const incRooms = () =>
+    dispatch({
+      type: "patch",
+      payload: { roomsCount: Math.min(10, (form.roomsCount || 0) + 1) },
+    });
 
   const onPickDate = (d) => {
     if (!d) return;
@@ -138,30 +288,40 @@ export default function SearchBar() {
     picked.setHours(0, 0, 0, 0);
 
     if (isSameDate(today, picked)) {
-      setFromToday(true);
-      setSelectedDate(null);
+      dispatch({
+        type: "patch",
+        payload: { fromToday: true, selectedDate: null },
+      });
     } else {
-      setFromToday(false);
-      setSelectedDate(picked);
+      dispatch({
+        type: "patch",
+        payload: { fromToday: false, selectedDate: picked },
+      });
     }
 
     setOpenId(null);
   };
 
   const onSearch = () => {
-    const city = (locationValue || locationQuery || "").trim();
+    const city = normalizeCityLabel(
+      form.locationValue || form.locationQuery || "",
+    );
 
     const params = new URLSearchParams();
     if (city) params.set("city", city);
 
-    if (fromToday) {
-      params.set("from", "today");
-    } else if (selectedDate) {
-      params.set("fromDate", formatISODate(selectedDate));
+    if (form.fromToday) params.set("from", "today");
+    else if (form.selectedDate)
+      params.set("fromDate", formatISODate(form.selectedDate));
+
+    if (form.roomsCount > 0) params.set("rooms", String(form.roomsCount));
+
+    if (form.kitchen) {
+      params.set("kitchen", "1");
+      params.set("more", "1");
     }
 
-    if (roomsCount > 0) params.set("rooms", String(roomsCount));
-    if (kitchen) params.set("kitchen", "1");
+    if (city) rememberCity(city);
 
     navigate(`/listings?${params.toString()}`);
     setOpenId(null);
@@ -170,21 +330,29 @@ export default function SearchBar() {
   return (
     <div className={styles.wrapper} ref={rootRef}>
       <div className={styles.bar}>
-        {/* 1) Локация */}
+        {/* LOCATION */}
         <div className={styles.field}>
-          <button
-            type="button"
+          <div
             className={styles.trigger}
-            onClick={() => toggle("location")}
+            role="button"
+            tabIndex={-1}
+            onMouseDown={() => {
+              setOpenId("location");
+              requestAnimationFrame(() => locationInputRef.current?.focus());
+            }}
             aria-expanded={openId === "location"}
           >
             <div className={styles.inputWrap}>
               <input
+                ref={locationInputRef}
                 className={styles.input}
                 placeholder="Місцезнаходження"
-                value={locationQuery}
+                value={form.locationQuery}
                 onChange={(e) => {
-                  setLocationQuery(e.target.value);
+                  dispatch({
+                    type: "patch",
+                    payload: { locationQuery: e.target.value },
+                  });
                   setOpenId("location");
                 }}
                 onFocus={() => setOpenId("location")}
@@ -194,22 +362,50 @@ export default function SearchBar() {
                 <LocationIcon />
               </span>
             </div>
-          </button>
+          </div>
 
           {openId === "location" && (
             <div className={styles.dropdown}>
-              {!!filteredLocations.last.length && (
+              {!!geoItems.length && (
                 <section className={styles.section}>
-                  <div className={styles.sectionTitle}>Останній пошук</div>
+                  <div className={styles.sectionTitle}>
+                    Підказки
+                    {geoLoading ? "…" : ""}
+                  </div>
+
                   <ul className={styles.list}>
-                    {filteredLocations.last.map((item) => (
-                      <li key={item.id}>
+                    {geoItems.map((item) => (
+                      <li key={`geo-${item.id}`}>
                         <button
                           type="button"
                           className={styles.item}
+                          onMouseDown={(e) => e.preventDefault()}
                           onClick={() => pickLocation(item)}
                         >
-                          <span className={styles.icon}>
+                          <span className={styles.icon} aria-hidden="true">
+                            <LocationSmallIcon />
+                          </span>
+                          <span className={styles.itemText}>{item.label}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+
+              {!!lastItems.length && (
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>Останній пошук</div>
+                  <ul className={styles.list}>
+                    {lastItems.map((item) => (
+                      <li key={`last-${item.id}`}>
+                        <button
+                          type="button"
+                          className={styles.item}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => pickLocation(item)}
+                        >
+                          <span className={styles.icon} aria-hidden="true">
                             <TimerIcon />
                           </span>
                           <span className={styles.itemText}>{item.label}</span>
@@ -217,44 +413,43 @@ export default function SearchBar() {
                       </li>
                     ))}
                   </ul>
-
-                  <button type="button" className={styles.moreBtn}>
-                    більше &gt;
-                  </button>
                 </section>
               )}
 
-              <section className={styles.section}>
-                <div className={styles.sectionTitle}>Популярне</div>
-                <ul className={styles.list}>
-                  {filteredLocations.popular.map((item) => (
-                    <li key={item.id}>
-                      <button
-                        type="button"
-                        className={styles.item}
-                        onClick={() => pickLocation(item)}
-                      >
-                        <span className={styles.icon}>
-                          <LocationSmallIcon />
-                        </span>
-                        <span className={styles.itemText}>{item.label}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+              {!!popularCities.length && (
+                <section className={styles.section}>
+                  <div className={styles.sectionTitle}>Популярне</div>
+                  <ul className={styles.list}>
+                    {popularCities.map((item) => (
+                      <li key={`pop-${item.id}`}>
+                        <button
+                          type="button"
+                          className={styles.item}
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => pickLocation(item)}
+                        >
+                          <span className={styles.icon} aria-hidden="true">
+                            <LocationSmallIcon />
+                          </span>
+                          <span className={styles.itemText}>{item.label}</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
             </div>
           )}
         </div>
 
         <div className={styles.divider} />
 
-        {/* 2) Від коли — календарь через CalendarDropdown */}
+        {/* WHEN */}
         <div className={styles.field}>
           <button
             type="button"
             className={styles.triggerText}
-            onClick={() => toggle("when")}
+            onClick={() => setOpenId(openId === "when" ? null : "when")}
             aria-expanded={openId === "when"}
           >
             <span className={styles.valueText}>{whenLabel}</span>
@@ -268,8 +463,8 @@ export default function SearchBar() {
           {openId === "when" && (
             <div className={styles.calendarWrap}>
               <CalendarDropdown
-                value={fromToday ? new Date() : selectedDate}
-                onChange={(d) => onPickDate(d)}
+                value={form.fromToday ? new Date() : form.selectedDate}
+                onChange={onPickDate}
                 classNames={calStyles}
                 onClose={() => setOpenId(null)}
               />
@@ -279,12 +474,12 @@ export default function SearchBar() {
 
         <div className={styles.divider} />
 
-        {/* 3) Кількість кімнат — панелька */}
+        {/* ROOMS */}
         <div className={styles.field}>
           <button
             type="button"
             className={styles.triggerText}
-            onClick={() => toggle("rooms")}
+            onClick={() => setOpenId(openId === "rooms" ? null : "rooms")}
             aria-expanded={openId === "rooms"}
           >
             <span className={styles.valueText}>{roomsLabel}</span>
@@ -309,7 +504,7 @@ export default function SearchBar() {
                   >
                     –
                   </button>
-                  <div className={styles.counterValue}>{roomsCount}</div>
+                  <div className={styles.counterValue}>{form.roomsCount}</div>
                   <button
                     type="button"
                     className={styles.counterBtn}
@@ -328,10 +523,15 @@ export default function SearchBar() {
                 <button
                   type="button"
                   className={`${styles.toggle} ${
-                    kitchen ? styles.toggleOn : ""
+                    form.kitchen ? styles.toggleOn : ""
                   }`}
-                  onClick={() => setKitchen((v) => !v)}
-                  aria-pressed={kitchen}
+                  onClick={() =>
+                    dispatch({
+                      type: "patch",
+                      payload: { kitchen: !form.kitchen },
+                    })
+                  }
+                  aria-pressed={form.kitchen}
                 >
                   <span className={styles.knob} />
                 </button>
@@ -340,7 +540,7 @@ export default function SearchBar() {
           )}
         </div>
 
-        {/* Кнопка поиска */}
+        {/* SEARCH */}
         <button
           type="button"
           className={styles.searchBtn}

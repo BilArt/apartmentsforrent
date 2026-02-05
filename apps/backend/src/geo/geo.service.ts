@@ -17,14 +17,42 @@ type Settlement = {
   alt: string[];
 };
 
-function norm(s: string) {
-  return s.trim().toLowerCase();
+function norm(s: unknown) {
+  return String(s || '')
+    .trim()
+    .toLowerCase();
 }
 
 function tryReadJson(filePath: string): Settlement[] | null {
   if (!fs.existsSync(filePath)) return null;
   const raw = fs.readFileSync(filePath, 'utf8');
-  return JSON.parse(raw) as Settlement[];
+  const parsed = JSON.parse(raw);
+  return Array.isArray(parsed) ? (parsed as Settlement[]) : null;
+}
+
+function featureRank(code?: string) {
+  switch (code) {
+    case 'PPLC':
+      return 0;
+    case 'PPLA':
+      return 1;
+    case 'PPLA2':
+      return 2;
+    case 'PPLA3':
+      return 3;
+    case 'PPLA4':
+      return 4;
+    case 'PPL':
+      return 5;
+    case 'PPLG':
+      return 6;
+    case 'PPLS':
+      return 7;
+    case 'PPLX':
+      return 8;
+    default:
+      return 50;
+  }
 }
 
 @Injectable()
@@ -36,12 +64,10 @@ export class GeoService {
       process.cwd(),
       'data/geo/ua.settlements.json',
     );
-
     const candidate2 = path.resolve(
       process.cwd(),
       'apps/backend/data/geo/ua.settlements.json',
     );
-
     const candidate3 = path.resolve(
       __dirname,
       '../../../data/geo/ua.settlements.json',
@@ -71,20 +97,64 @@ export class GeoService {
     const query = norm(q);
     if (!query) return [];
 
-    const res: Settlement[] = [];
+    const candidates: Settlement[] = [];
+
     for (const s of this.settlements) {
-      if (
-        norm(s.name).includes(query) ||
-        (s.nameUk && norm(s.nameUk).includes(query)) ||
-        (s.nameRu && norm(s.nameRu).includes(query)) ||
-        s.alt.some((a) => norm(a).includes(query))
-      ) {
-        res.push(s);
-        if (res.length >= limit) break;
-      }
+      const nName = norm(s.name);
+      const nUk = norm(s.nameUk);
+      const nRu = norm(s.nameRu);
+      const alt = Array.isArray(s.alt) ? s.alt : [];
+
+      const hit =
+        nName.includes(query) ||
+        (nUk && nUk.includes(query)) ||
+        (nRu && nRu.includes(query)) ||
+        alt.some((a) => norm(a).includes(query));
+
+      if (hit) candidates.push(s);
     }
 
-    return res.map((s) => ({
+    const isExact = (s: Settlement) => {
+      const nName = norm(s.name);
+      const nUk = norm(s.nameUk);
+      const nRu = norm(s.nameRu);
+      return nUk === query || nName === query || nRu === query;
+    };
+
+    const isStarts = (s: Settlement) => {
+      const nName = norm(s.name);
+      const nUk = norm(s.nameUk);
+      const nRu = norm(s.nameRu);
+      return (
+        (nUk && nUk.startsWith(query)) ||
+        nName.startsWith(query) ||
+        (nRu && nRu.startsWith(query))
+      );
+    };
+
+    candidates.sort((a, b) => {
+      const ea = isExact(a) ? 1 : 0;
+      const eb = isExact(b) ? 1 : 0;
+      if (ea !== eb) return eb - ea;
+
+      const sa = isStarts(a) ? 1 : 0;
+      const sb = isStarts(b) ? 1 : 0;
+      if (sa !== sb) return sb - sa;
+
+      const fa = featureRank(a.featureCode);
+      const fb = featureRank(b.featureCode);
+      if (fa !== fb) return fa - fb;
+
+      const pa = Number(a.population || 0);
+      const pb = Number(b.population || 0);
+      if (pa !== pb) return pb - pa;
+
+      const an = norm(a.nameUk || a.name);
+      const bn = norm(b.nameUk || b.name);
+      return an.localeCompare(bn);
+    });
+
+    return candidates.slice(0, limit).map((s) => ({
       id: s.id,
       name: s.name,
       nameUk: s.nameUk,

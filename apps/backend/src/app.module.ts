@@ -8,8 +8,16 @@ import { FavoritesModule } from './favorites/favorites.module';
 import { ListingsModule } from './listings/listings.module';
 import { RequestsModule } from './requests/requests.module';
 
+import { GeoModule } from './geo/geo.module';
+
 @Module({
-  imports: [AuthModule, ListingsModule, FavoritesModule, RequestsModule],
+  imports: [
+    AuthModule,
+    ListingsModule,
+    FavoritesModule,
+    RequestsModule,
+    GeoModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })

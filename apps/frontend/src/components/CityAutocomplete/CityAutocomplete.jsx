@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import styles from "./CityAutocomplete.module.scss";
 
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_BASE = import.meta.env.VITE_API_URL || "";
 
 function displayName(s) {
   return s?.nameUk || s?.name || "";
@@ -9,6 +9,14 @@ function displayName(s) {
 
 function cx(...parts) {
   return parts.filter(Boolean).join(" ");
+}
+
+function buildUrl(q, limit) {
+  const base = API_BASE ? API_BASE.replace(/\/$/, "") : "";
+  const url = new URL(`${base}/geo/ua/settlements`, window.location.origin);
+  url.searchParams.set("q", q);
+  url.searchParams.set("limit", String(limit));
+  return url.toString();
 }
 
 function CityAutocomplete({
@@ -25,7 +33,7 @@ function CityAutocomplete({
   dropdownClassName,
   optionClassName,
 }) {
-  const [query, setQuery] = useState(value ? displayName(value) : "");
+  const [query, setQuery] = useState(String(value || ""));
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -35,7 +43,7 @@ function CityAutocomplete({
   const containerRef = useRef(null);
 
   useEffect(() => {
-    setQuery(value ? displayName(value) : "");
+    setQuery(String(value || ""));
   }, [value]);
 
   useEffect(() => {
@@ -55,11 +63,15 @@ function CityAutocomplete({
       setErr(null);
       setLoading(false);
       setOpen(false);
-      if (value !== null) onChange?.(null);
+      if (String(value || "") !== "") onChange?.("");
       return;
     }
 
-    if (value && displayName(value).toLowerCase() === q.toLowerCase()) {
+    if (
+      String(value || "")
+        .trim()
+        .toLowerCase() === q.toLowerCase()
+    ) {
       setResults([]);
       setErr(null);
       setLoading(false);
@@ -75,10 +87,6 @@ function CityAutocomplete({
       return;
     }
 
-    const url = new URL(`${API_BASE}/geo/ua/settlements`);
-    url.searchParams.set("q", q);
-    url.searchParams.set("limit", String(limit));
-
     if (abortRef.current) abortRef.current.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -88,16 +96,16 @@ function CityAutocomplete({
 
     const t = setTimeout(async () => {
       try {
-        const res = await fetch(url.toString(), {
+        const res = await fetch(buildUrl(q, limit), {
           signal: controller.signal,
-          credentials: "include",
         });
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const data = await res.json();
-        setResults(Array.isArray(data) ? data : []);
-        setOpen(true);
+        const arr = Array.isArray(data) ? data : [];
+        setResults(arr);
+        setOpen(arr.length > 0);
       } catch (e) {
         if (e?.name === "AbortError") return;
         setErr("Не вдалося завантажити список. Перевір API.");
@@ -112,8 +120,9 @@ function CityAutocomplete({
   }, [query, limit, onChange, value]);
 
   const handlePick = (s) => {
-    onChange?.(s);
-    setQuery(displayName(s));
+    const name = displayName(s) || "";
+    onChange?.(name);
+    setQuery(name);
     setOpen(false);
     setResults([]);
     setErr(null);
@@ -123,11 +132,9 @@ function CityAutocomplete({
     const q = query.trim();
     if (!q) return;
 
-    if (value) {
-      const selected = displayName(value);
-      if (selected.toLowerCase() !== q.toLowerCase()) {
-        setQuery(selected);
-      }
+    const v = String(value || "").trim();
+    if (v && v.toLowerCase() !== q.toLowerCase()) {
+      setQuery(v);
     }
   };
 
@@ -161,13 +168,6 @@ function CityAutocomplete({
               onClick={() => handlePick(s)}
             >
               <div className={styles.title}>{displayName(s) || s.name}</div>
-              <div className={styles.meta}>
-                {s.nameUk ? s.name : null}
-                {s.admin1 ? ` • admin1:${s.admin1}` : ""}
-                {typeof s.population === "number" && s.population > 0
-                  ? ` • pop:${s.population}`
-                  : ""}
-              </div>
             </li>
           ))}
         </ul>
@@ -179,7 +179,7 @@ function CityAutocomplete({
     <div className={styles.wrapper} ref={containerRef}>
       {showLabel ? (
         <label className={styles.field}>
-          <span>{label}</span>
+          <span className={styles.label}>{label}</span>
           {inputEl}
         </label>
       ) : (

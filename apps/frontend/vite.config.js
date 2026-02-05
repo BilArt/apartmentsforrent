@@ -9,6 +9,8 @@ export default defineConfig({
       "/auth": "http://localhost:3000",
       "/listings": "http://localhost:3000",
       "/health": "http://localhost:3000",
+
+      "/geo": "http://localhost:3000",
     },
   },
 });
