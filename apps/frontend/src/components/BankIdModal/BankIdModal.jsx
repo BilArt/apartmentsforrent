@@ -1,54 +1,40 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import styles from "./BankIdModal.module.scss";
 import { authApi } from "../../api/auth";
+import { API_BASE_URL } from "../../api/config";
 
 export default function BankIdModal({ mode, onAuthed, onCancel }) {
   const [bank, setBank] = useState("mono");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const isDev = import.meta.env.DEV;
-
-  const DEV_TENANTS = useMemo(() => ["SEED-BANKID-TENANT-1"], []);
-  const DEV_OWNERS = useMemo(
-    () => ["SEED-BANKID-1", "SEED-BANKID-2", "SEED-BANKID-3"],
-    []
-  );
-
-  const handleDevLogin = async (bankId) => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const user = await authApi.login({ bankId });
-      onAuthed?.(user);
-    } catch (e) {
-      setError(e?.message || "Помилка входу");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleConfirm = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const mockProfile = {
-        firstName: "Test",
-        lastName: "User",
-        phone: "+380000000000",
-        bankId: `${bank}:123`,
-      };
+      const startUrl = `${API_BASE_URL}/auth/bankid/start?bank=${encodeURIComponent(
+        bank,
+      )}&mode=${encodeURIComponent(mode || "signin")}`;
 
-      const user =
-        mode === "register"
-          ? await authApi.register(mockProfile)
-          : await authApi.login({ bankId: mockProfile.bankId });
-
-      onAuthed?.(user);
+      window.location.href = startUrl;
     } catch (e) {
       setError(e?.message || "Помилка BankID");
+      setLoading(false);
+    }
+  };
+
+  const handleCheckSession = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const user = await authApi.me();
+      onAuthed?.(user);
+    } catch (e) {
+      setError(
+        e?.message ||
+          "Не вдалося підтвердити сесію. Спробуй ще раз або увійди іншим способом.",
+      );
     } finally {
       setLoading(false);
     }
@@ -87,54 +73,25 @@ export default function BankIdModal({ mode, onAuthed, onCancel }) {
         викликають більше довіри у користувачів.
       </p>
 
-      {isDev && (
-        <div className={styles.devBlock}>
-          <div className={styles.devTitle}>Dev швидкий вхід</div>
-
-          <div className={styles.devGroup}>
-            <div className={styles.devLabel}>Орендар</div>
-            <div className={styles.devGrid}>
-              {DEV_TENANTS.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  className={styles.devBtn}
-                  onClick={() => handleDevLogin(id)}
-                  disabled={loading}
-                >
-                  {id}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.devGroup}>
-            <div className={styles.devLabel}>Орендодавець</div>
-            <div className={styles.devGrid}>
-              {DEV_OWNERS.map((id) => (
-                <button
-                  key={id}
-                  type="button"
-                  className={styles.devBtn}
-                  onClick={() => handleDevLogin(id)}
-                  disabled={loading}
-                >
-                  {id}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className={styles.devHint}>
-            (Це видно тільки в dev-режимі)
-          </div>
-        </div>
-      )}
-
       {error && <p className={styles.error}>{error}</p>}
 
+      <button
+        type="button"
+        className={styles.linkBtn}
+        onClick={handleCheckSession}
+        disabled={loading}
+        title="Якщо ти вже підтвердив у банку і повернувся назад"
+      >
+        Я підтвердив
+      </button>
+
       <div className={styles.actions}>
-        <button type="button" className={styles.cancel} onClick={onCancel} disabled={loading}>
+        <button
+          type="button"
+          className={styles.cancel}
+          onClick={onCancel}
+          disabled={loading}
+        >
           Скасувати
         </button>
 
@@ -144,7 +101,7 @@ export default function BankIdModal({ mode, onAuthed, onCancel }) {
           onClick={handleConfirm}
           disabled={loading}
         >
-          {loading ? "Перевіряємо..." : "Підтвердити"}
+          {loading ? "Переходимо..." : "Підтвердити"}
         </button>
       </div>
     </div>
