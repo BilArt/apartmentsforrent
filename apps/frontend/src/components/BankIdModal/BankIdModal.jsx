@@ -151,10 +151,6 @@ export default function BankIdModal({ mode, onAuthed, onCancel }) {
         )}
       </div>
 
-      <p className={styles.note}>
-        Зараз це MVP-stub: замінимо на реальний redirect/QR-flow пізніше.
-      </p>
-
       {error && <p className={styles.error}>{error}</p>}
 
       <div className={styles.actions}>

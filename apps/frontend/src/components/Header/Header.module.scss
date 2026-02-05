@@ -202,7 +202,6 @@
   }
 }
 
-/* Burger */
 .burgerWrap {
   display: none;
   position: relative;
@@ -226,7 +225,7 @@
     box-shadow 150ms ease;
 
   position: relative;
-  z-index: 101; // выше меню, чтобы крестик был кликабельным
+  z-index: 101;
 }
 
 .burgerLine {
@@ -243,24 +242,20 @@
   transform-origin: center;
 }
 
-/* OPEN state: превращаем в крестик */
 .burgerBtnOpen {
   border-color: rgba(0, 0, 0, 0.08);
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.16);
 }
 
-/* первая линия -> \ */
 .burgerBtnOpen .burgerLine:nth-child(1) {
   transform: translateY(7px) rotate(45deg);
 }
 
-/* средняя линия исчезает */
 .burgerBtnOpen .burgerLine:nth-child(2) {
   opacity: 0;
   width: 0;
 }
 
-/* третья линия -> / */
 .burgerBtnOpen .burgerLine:nth-child(3) {
   transform: translateY(-7px) rotate(-45deg);
 }

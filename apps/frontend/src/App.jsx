@@ -13,6 +13,11 @@ import MyListingsPage from "./pages/MyListingsPage/MyListingsPage";
 import RequestsPage from "./pages/RequestsPage/RequestsPage";
 import ProfilePage from "./pages/ProfilePage/ProfilePage";
 import FavoritesPage from "./pages/FavoritesPage/FavoritesPage";
+import AboutPage from "./pages/AboutPage/AboutPage";
+import HowItWorksPage from "./pages/HowItWorksPage/HowItWorksPage";
+import BankIdPage from "./pages/BankIdPage/BankIdPage";
+import RatingPage from "./pages/RatingPage/RatingPage";
+import NewListingPage from "./pages/NewListingPage/NewListingPage";
 
 import Header from "./components/Header/Header";
 import Footer from "./components/Footer/Footer";
@@ -81,7 +86,6 @@ function App() {
     };
   }, []);
 
-  // ✅ общий favorites state
   const { canFavorite, favoriteSet, toggleFavorite } =
     useFavorites(currentUser);
 
@@ -177,6 +181,11 @@ function App() {
 
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/how-it-works" element={<HowItWorksPage />} />
+        <Route path="/bankid" element={<BankIdPage />} />
+        <Route path="/rating" element={<RatingPage />} />
+        <Route path="/listings/new" element={<NewListingPage />} />
 
         <Route
           path="/listings"

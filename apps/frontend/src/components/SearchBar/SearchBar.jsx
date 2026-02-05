@@ -123,7 +123,7 @@ export default function SearchBar() {
   );
   const [cityPop, setCityPop] = useState(() => loadJson(LS_CITY_POP, {}));
 
-  const [geoItems, setGeoItems] = useState([]); // [{id,label}]
+  const [geoItems, setGeoItems] = useState([]);
   const [geoLoading, setGeoLoading] = useState(false);
 
   const geoAbortRef = useRef(null);

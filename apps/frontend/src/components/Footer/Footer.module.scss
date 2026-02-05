@@ -3,23 +3,14 @@
   background: #fff;
 }
 
-.topGrid,
-.bottomGrid {
+.topGrid {
   display: grid;
   grid-template-columns: 220px repeat(3, minmax(0, 1fr)) 240px;
   column-gap: 60px;
   align-items: start;
 }
 
-.bottomGrid {
-  margin-top: 39px;
-}
-
 .brandCol {
-  align-self: start;
-}
-
-.bottomSpacer {
   align-self: start;
 }
 
@@ -167,30 +158,156 @@
   color: var(--color-text-primary);
 }
 
-/* ✅ Tablet: НЕ делаем вертикально. Просто ужимаем */
+.form {
+  display: grid;
+  gap: 14px;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.label {
+  display: grid;
+  gap: 8px;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 14px;
+  color: var(--color-text-primary);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 14px;
+  outline: none;
+
+  &:focus {
+    border-color: rgba(0, 0, 0, 0.22);
+  }
+}
+
+.textarea {
+  resize: vertical;
+}
+
+.formHint {
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 12px;
+  color: var(--color-secondary);
+}
+
+.formBtn {
+  height: 44px;
+  border: 0;
+  border-radius: 30px;
+  cursor: pointer;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  background: var(--color-primary);
+  color: #fff;
+  transition:
+    transform 0.15s ease,
+    opacity 0.15s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+}
+
+.infoP {
+  margin: 0 0 12px;
+}
+
+.infoH3 {
+  margin: 16px 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.infoUl {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  display: grid;
+  gap: 8px;
+}
+
 @media (max-width: 1100px) {
-  .topGrid,
-  .bottomGrid {
+  .topGrid {
     column-gap: 28px;
     grid-template-columns: 200px repeat(3, minmax(0, 1fr)) 220px;
   }
 }
 
-/* ✅ Когда тесно — 2 ряда, но НЕ вертикально */
 @media (max-width: 900px) {
   .topGrid {
     grid-template-columns: 200px repeat(2, minmax(0, 1fr)) 220px;
     row-gap: 26px;
   }
+}
 
-  .bottomGrid {
-    grid-template-columns: 200px repeat(2, minmax(0, 1fr)) 220px;
-    row-gap: 26px;
-    margin-top: 26px;
+@media (max-width: 720px) {
+  .topGrid {
+    grid-template-columns: 1fr 1fr;
+    column-gap: 24px;
+    row-gap: 22px;
+    grid-template-areas:
+      "brand brand"
+      "platform support"
+      "legal legal"
+      "social social";
+  }
+
+  .brandCol {
+    grid-area: brand;
+  }
+
+  .colPlatform {
+    grid-area: platform;
+  }
+
+  .colSupport {
+    grid-area: support;
+  }
+
+  .colLegal {
+    grid-area: legal;
+  }
+
+  .socialCol {
+    grid-area: social;
+    justify-self: start;
   }
 }
 
-/* ✅ Только когда реально узко — вертикально и соцсети последними */
 @media (max-width: 620px) {
   .topGrid {
     grid-template-columns: 1fr;
@@ -199,49 +316,32 @@
     grid-template-areas:
       "brand"
       "platform"
-      "estate"
       "support"
+      "legal"
       "social";
   }
 
   .brandCol {
     grid-area: brand;
   }
+
   .colPlatform {
     grid-area: platform;
   }
-  .colEstate {
-    grid-area: estate;
-  }
+
   .colSupport {
     grid-area: support;
   }
+
+  .colLegal {
+    grid-area: legal;
+  }
+
   .socialCol {
     grid-area: social;
   }
 
-  .bottomGrid {
+  .formRow {
     grid-template-columns: 1fr;
-    row-gap: 22px;
-    margin-top: 22px;
-
-    grid-template-areas:
-      "users"
-      "reviews"
-      "legal";
-  }
-
-  .bottomSpacer {
-    display: none;
-  }
-
-  .colUsers {
-    grid-area: users;
-  }
-  .colReviews {
-    grid-area: reviews;
-  }
-  .colLegal {
-    grid-area: legal;
   }
 }
