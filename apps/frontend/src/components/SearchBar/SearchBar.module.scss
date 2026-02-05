@@ -39,6 +39,14 @@
   min-width: 0;
 }
 
+.fieldLocation {
+  // desktop defaults live in triggers
+}
+.fieldWhen {
+}
+.fieldRooms {
+}
+
 .divider {
   width: 1px;
   height: 28px;
@@ -399,58 +407,116 @@
   }
 }
 
-/* Tablet */
 @media (max-width: 900px) {
   .bar {
-    height: auto;
-    padding: 10px 56px 10px 10px;
-    gap: 6px;
-    flex-wrap: wrap;
+    height: 56px;
+
+    display: grid;
+    grid-template-columns: 1fr 170px 230px 44px;
+    align-items: center;
+    gap: 10px;
+
+    padding: 6px 8px;
   }
 
   .divider {
     display: none;
   }
 
+  .field {
+    height: 44px;
+  }
+
+  .fieldLocation,
+  .fieldWhen,
+  .fieldRooms {
+    grid-row: 1;
+  }
+
+  .fieldLocation {
+    grid-column: 1 / 2;
+  }
+
+  .fieldWhen {
+    grid-column: 2 / 3;
+  }
+
+  .fieldRooms {
+    grid-column: 3 / 4;
+  }
+
   .trigger,
   .triggerText {
+    width: 100%;
     height: 44px;
     border-radius: 30px;
     background: rgba(0, 0, 0, 0.03);
   }
 
   .trigger {
-    width: min(100%, 520px);
+    padding: 0 16px;
   }
 
   .triggerText {
     min-width: 0;
-    width: fit-content;
     padding: 0 14px;
+  }
+
+  .searchBtn {
+    position: static;
+    width: 44px;
+    height: 44px;
+    border-radius: 30px;
+    justify-self: end;
+  }
+
+  .fieldWhen .calendarWrap {
+    left: auto;
+    right: 0;
   }
 
   .dropdown {
     width: min(420px, calc(100vw - 24px));
   }
-}
-
-/* Mobile */
-
-@media (max-width: 520px) {
-  .bar {
-    padding-right: 52px;
-  }
-
-  .trigger {
-    width: 100%;
-  }
-
-  .triggerText {
-    width: 100%;
-    justify-content: space-between;
-  }
 
   .dropdownRooms {
     width: min(360px, calc(100vw - 24px));
+  }
+}
+
+@media (max-width: 580px) {
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    height: auto;
+    .field:nth-of-type(2),
+    .field:nth-of-type(3) {
+      flex: 1 1 calc(50% - 5px);
+    }
+    .field {
+      flex: 1 1 100%;
+      height: 44px;
+    }
+  }
+
+  /* Mobile */
+  @media (max-width: 520px) {
+    .bar {
+      gap: 10px;
+      padding: 10px;
+    }
+  }
+
+  .searchBtn {
+    position: static; 
+    width: 100%;
+    height: 44px;
+    border-radius: 30px;
+    margin-top: 4px;
+  }
+
+  .searchIcon {
+    width: 18px;
+    height: 18px;
   }
 }

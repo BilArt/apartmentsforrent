@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import styles from "./Footer.module.scss";
@@ -9,12 +9,78 @@ import FacebookIcon from "../../assets/svg/facebook.svg?react";
 import YoutubeIcon from "../../assets/svg/youtube.svg?react";
 import TiktokIcon from "../../assets/svg/tiktok.svg?react";
 
-const social = [
+const SOCIAL = [
   { id: "ig", label: "Instagram", icon: InstagramIcon, href: "#" },
   { id: "fb", label: "Facebook", icon: FacebookIcon, href: "#" },
   { id: "yt", label: "YouTube", icon: YoutubeIcon, href: "#" },
   { id: "tt", label: "TikTok", icon: TiktokIcon, href: "#" },
 ];
+
+const TOP_COLUMNS = [
+  {
+    title: "Про платформу",
+    links: [
+      { label: "Про нас", to: "/", kind: "route" },
+      { label: "Як це працює", to: "/#how-it-works", kind: "route" },
+      { label: "BankID", kind: "modal" },
+    ],
+  },
+  {
+    title: "Нерухомість",
+    links: [
+      { label: "Пошук житла", to: "/listings", kind: "route" },
+      { label: "Фільтри", kind: "modal" },
+      { label: "Додати оголошення", kind: "modal" },
+    ],
+  },
+  {
+    title: "Підтримка",
+    links: [
+      { label: "Допомога", kind: "modal" },
+      { label: "Підтримка", kind: "modal" },
+      { label: "Повідомити про проблему", kind: "modal" },
+    ],
+  },
+];
+
+const BOTTOM_COLUMNS = [
+  {
+    title: "Користувачам",
+    links: [
+      { label: "Орендодавцям", kind: "modal" },
+      { label: "Орендарям", kind: "modal" },
+      { label: "Рейтинг", kind: "modal" },
+    ],
+  },
+  {
+    title: "Відгуки та безпека",
+    links: [
+      { label: "Відгуки", kind: "modal" },
+      { label: "Правила", kind: "modal" },
+      { label: "Безпека", kind: "modal" },
+    ],
+  },
+  {
+    title: "Юридично",
+    links: [
+      { label: "Угода", kind: "modal" },
+      { label: "Конфіденційність", kind: "modal" },
+    ],
+  },
+];
+
+function LinksColumn({ title, links, className, renderLink, styles }) {
+  return (
+    <div className={`${styles.col} ${className || ""}`}>
+      <div className={styles.colTitle}>{title}</div>
+      <ul className={styles.list}>
+        {links.map((l) => (
+          <li key={l.label}>{renderLink(l)}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export default function Footer() {
   const [info, setInfo] = useState(null);
@@ -29,65 +95,6 @@ export default function Footer() {
   };
 
   const closeInfo = () => setInfo(null);
-
-  const topColumns = useMemo(
-    () => [
-      {
-        title: "Про платформу",
-        links: [
-          { label: "Про нас", to: "/", kind: "route" },
-          { label: "Як це працює", to: "/#how-it-works", kind: "route" },
-          { label: "BankID", kind: "modal" },
-        ],
-      },
-      {
-        title: "Нерухомість",
-        links: [
-          { label: "Пошук житла", to: "/listings", kind: "route" },
-          { label: "Фільтри", kind: "modal" },
-          { label: "Додати оголошення", kind: "modal" },
-        ],
-      },
-      {
-        title: "Підтримка",
-        links: [
-          { label: "Допомога", kind: "modal" },
-          { label: "Підтримка", kind: "modal" },
-          { label: "Повідомити про проблему", kind: "modal" },
-        ],
-      },
-    ],
-    [],
-  );
-
-  const bottomColumns = useMemo(
-    () => [
-      {
-        title: "Користувачам",
-        links: [
-          { label: "Орендодавцям", kind: "modal" },
-          { label: "Орендарям", kind: "modal" },
-          { label: "Рейтинг", kind: "modal" },
-        ],
-      },
-      {
-        title: "Відгуки та безпека",
-        links: [
-          { label: "Відгуки", kind: "modal" },
-          { label: "Правила", kind: "modal" },
-          { label: "Безпека", kind: "modal" },
-        ],
-      },
-      {
-        title: "Юридично",
-        links: [
-          { label: "Угода", kind: "modal" },
-          { label: "Конфіденційність", kind: "modal" },
-        ],
-      },
-    ],
-    [],
-  );
 
   const renderLink = (link) => {
     if (link.kind === "route" && link.to) {
@@ -109,37 +116,44 @@ export default function Footer() {
     );
   };
 
-  function LinksColumn({ title, links }) {
-    return (
-      <div className={styles.col}>
-        <div className={styles.colTitle}>{title}</div>
-        <ul className={styles.list}>
-          {links.map((l) => (
-            <li key={l.label}>{renderLink(l)}</li>
-          ))}
-        </ul>
-      </div>
-    );
-  }
-
   return (
     <>
       <footer className={styles.footer}>
         <div className="container">
           <div className={styles.topGrid}>
-            <Link to="/" className={styles.logo} aria-label="NoReset home">
-              <span className={styles.logoAccent}>Nø</span>RESET
-            </Link>
+            <div className={styles.brandCol}>
+              <Link to="/" className={styles.logo} aria-label="NoReset home">
+                <span className={styles.logoAccent}>Nø</span>RESET
+              </Link>
+            </div>
 
-            {topColumns.map((c) => (
-              <LinksColumn key={c.title} title={c.title} links={c.links} />
-            ))}
+            <LinksColumn
+              styles={styles}
+              className={styles.colPlatform}
+              title={TOP_COLUMNS[0].title}
+              links={TOP_COLUMNS[0].links}
+              renderLink={renderLink}
+            />
+            <LinksColumn
+              styles={styles}
+              className={styles.colEstate}
+              title={TOP_COLUMNS[1].title}
+              links={TOP_COLUMNS[1].links}
+              renderLink={renderLink}
+            />
+            <LinksColumn
+              styles={styles}
+              className={styles.colSupport}
+              title={TOP_COLUMNS[2].title}
+              links={TOP_COLUMNS[2].links}
+              renderLink={renderLink}
+            />
 
-            <div className={styles.col}>
+            <div className={`${styles.col} ${styles.socialCol}`}>
               <div className={styles.colTitle}>Наші соціальні мережі</div>
 
               <div className={styles.social}>
-                {social.map(({ id, icon, label, href }) => {
+                {SOCIAL.map(({ id, icon, label, href }) => {
                   const SocialIcon = icon;
                   return (
                     <a
@@ -160,11 +174,31 @@ export default function Footer() {
           </div>
 
           <div className={styles.bottomGrid}>
-            <div aria-hidden="true" />
-            {bottomColumns.map((c) => (
-              <LinksColumn key={c.title} title={c.title} links={c.links} />
-            ))}
-            <div aria-hidden="true" />
+            <div className={styles.bottomSpacer} aria-hidden="true" />
+
+            <LinksColumn
+              styles={styles}
+              className={styles.colUsers}
+              title={BOTTOM_COLUMNS[0].title}
+              links={BOTTOM_COLUMNS[0].links}
+              renderLink={renderLink}
+            />
+            <LinksColumn
+              styles={styles}
+              className={styles.colReviews}
+              title={BOTTOM_COLUMNS[1].title}
+              links={BOTTOM_COLUMNS[1].links}
+              renderLink={renderLink}
+            />
+            <LinksColumn
+              styles={styles}
+              className={styles.colLegal}
+              title={BOTTOM_COLUMNS[2].title}
+              links={BOTTOM_COLUMNS[2].links}
+              renderLink={renderLink}
+            />
+
+            <div className={styles.bottomSpacer} aria-hidden="true" />
           </div>
         </div>
 

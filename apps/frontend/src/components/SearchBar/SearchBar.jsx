@@ -331,7 +331,7 @@ export default function SearchBar() {
     <div className={styles.wrapper} ref={rootRef}>
       <div className={styles.bar}>
         {/* LOCATION */}
-        <div className={styles.field}>
+        <div className={`${styles.field} ${styles.fieldLocation}`}>
           <div
             className={styles.trigger}
             role="button"
@@ -445,7 +445,7 @@ export default function SearchBar() {
         <div className={styles.divider} />
 
         {/* WHEN */}
-        <div className={styles.field}>
+        <div className={`${styles.field} ${styles.fieldWhen}`}>
           <button
             type="button"
             className={styles.triggerText}
@@ -475,7 +475,7 @@ export default function SearchBar() {
         <div className={styles.divider} />
 
         {/* ROOMS */}
-        <div className={styles.field}>
+        <div className={`${styles.field} ${styles.fieldRooms}`}>
           <button
             type="button"
             className={styles.triggerText}
