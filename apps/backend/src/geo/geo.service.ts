@@ -17,17 +17,74 @@ type Settlement = {
   alt: string[];
 };
 
-function norm(s: unknown) {
-  return String(s || '')
-    .trim()
-    .toLowerCase();
+function norm(v: unknown): string {
+  if (typeof v === 'string') return v.trim().toLowerCase();
+  if (typeof v === 'number' && Number.isFinite(v))
+    return String(v).trim().toLowerCase();
+  if (typeof v === 'boolean') return v ? 'true' : 'false';
+  return '';
+}
+
+function safeJsonParse(raw: string): unknown {
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+function isStringArray(v: unknown): v is string[] {
+  return Array.isArray(v) && v.every((x) => typeof x === 'string');
+}
+
+function isSettlement(v: unknown): v is Settlement {
+  if (typeof v !== 'object' || v === null) return false;
+
+  const o = v as Record<string, unknown>;
+
+  if (typeof o.id !== 'number' || !Number.isFinite(o.id)) return false;
+  if (typeof o.name !== 'string') return false;
+  if (typeof o.lat !== 'number' || !Number.isFinite(o.lat)) return false;
+  if (typeof o.lon !== 'number' || !Number.isFinite(o.lon)) return false;
+
+  if (o.population != null && typeof o.population !== 'number') return false;
+  if (o.featureCode != null && typeof o.featureCode !== 'string') return false;
+
+  if (o.alt != null && !isStringArray(o.alt)) return false;
+
+  return true;
+}
+
+function normalizeSettlement(s: Settlement): Settlement {
+  return {
+    ...s,
+    nameUk: typeof s.nameUk === 'string' ? s.nameUk : undefined,
+    nameRu: typeof s.nameRu === 'string' ? s.nameRu : undefined,
+    admin1: typeof s.admin1 === 'string' ? s.admin1 : undefined,
+    admin2: typeof s.admin2 === 'string' ? s.admin2 : undefined,
+    population:
+      typeof s.population === 'number' && Number.isFinite(s.population)
+        ? s.population
+        : 0,
+    featureCode: typeof s.featureCode === 'string' ? s.featureCode : '',
+    alt: Array.isArray(s.alt) ? s.alt.filter((x) => typeof x === 'string') : [],
+  };
 }
 
 function tryReadJson(filePath: string): Settlement[] | null {
   if (!fs.existsSync(filePath)) return null;
+
   const raw = fs.readFileSync(filePath, 'utf8');
-  const parsed = JSON.parse(raw);
-  return Array.isArray(parsed) ? (parsed as Settlement[]) : null;
+  const parsed = safeJsonParse(raw);
+
+  if (!Array.isArray(parsed)) return null;
+
+  const items: Settlement[] = [];
+  for (const x of parsed) {
+    if (isSettlement(x)) items.push(normalizeSettlement(x));
+  }
+
+  return items;
 }
 
 function featureRank(code?: string) {
@@ -80,16 +137,17 @@ export class GeoService {
 
     this.settlements = loaded ?? [];
 
+    const fileUsed = loaded
+      ? fs.existsSync(candidate1)
+        ? candidate1
+        : fs.existsSync(candidate2)
+          ? candidate2
+          : candidate3
+      : 'NOT FOUND';
+
+    // eslint-disable-next-line no-console
     console.log(
-      `[GeoService] loaded settlements: ${this.settlements.length} (file: ${
-        loaded
-          ? fs.existsSync(candidate1)
-            ? candidate1
-            : fs.existsSync(candidate2)
-              ? candidate2
-              : candidate3
-          : 'NOT FOUND'
-      })`,
+      `[GeoService] loaded settlements: ${this.settlements.length} (file: ${fileUsed})`,
     );
   }
 
@@ -145,8 +203,8 @@ export class GeoService {
       const fb = featureRank(b.featureCode);
       if (fa !== fb) return fa - fb;
 
-      const pa = Number(a.population || 0);
-      const pb = Number(b.population || 0);
+      const pa = Number.isFinite(a.population) ? a.population : 0;
+      const pb = Number.isFinite(b.population) ? b.population : 0;
       if (pa !== pb) return pb - pa;
 
       const an = norm(a.nameUk || a.name);
@@ -154,7 +212,9 @@ export class GeoService {
       return an.localeCompare(bn);
     });
 
-    return candidates.slice(0, limit).map((s) => ({
+    const n = Math.max(1, Math.min(50, Number(limit) || 20));
+
+    return candidates.slice(0, n).map((s) => ({
       id: s.id,
       name: s.name,
       nameUk: s.nameUk,
