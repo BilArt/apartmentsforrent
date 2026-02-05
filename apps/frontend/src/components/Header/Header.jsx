@@ -18,28 +18,42 @@ export default function Header({
   onSignUp,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   const menuRef = useRef(null);
+  const mobileRef = useRef(null);
+
   const navigate = useNavigate();
 
   const closeMenu = () => setMenuOpen(false);
   const toggleMenu = () => setMenuOpen((v) => !v);
 
-  useEffect(() => {
-    if (!menuOpen) return;
+  const closeMobile = () => setMobileOpen(false);
+  const toggleMobile = () => setMobileOpen((v) => !v);
 
+  useEffect(() => {
     const onDown = (e) => {
-      const el = menuRef.current;
-      if (!el) return;
-      if (!el.contains(e.target)) setMenuOpen(false);
+      if (menuOpen) {
+        const el = menuRef.current;
+        if (el && !el.contains(e.target)) setMenuOpen(false);
+      }
+
+      if (mobileOpen) {
+        const el2 = mobileRef.current;
+        if (el2 && !el2.contains(e.target)) setMobileOpen(false);
+      }
     };
 
     document.addEventListener("mousedown", onDown);
     return () => document.removeEventListener("mousedown", onDown);
-  }, [menuOpen]);
+  }, [menuOpen, mobileOpen]);
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === "Escape") setMenuOpen(false);
+      if (e.key === "Escape") {
+        setMenuOpen(false);
+        setMobileOpen(false);
+      }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
@@ -47,6 +61,7 @@ export default function Header({
 
   const go = (path) => {
     closeMenu();
+    closeMobile();
     navigate(path);
   };
 
@@ -65,6 +80,7 @@ export default function Header({
             <span className={styles.logoAccent}>Nø</span>RESET
           </Link>
 
+          {/* Desktop nav */}
           {!isAuthed ? (
             <nav className={styles.navigation}>
               <Button
@@ -181,6 +197,116 @@ export default function Header({
               </div>
             </nav>
           )}
+
+          {/* Burger (tablet/mobile) */}
+          <div className={styles.burgerWrap} ref={mobileRef}>
+            <button
+              type="button"
+              className={styles.burgerBtn}
+              onClick={toggleMobile}
+              aria-expanded={mobileOpen}
+              aria-label="Menu"
+            >
+              <span className={styles.burgerLine} />
+              <span className={styles.burgerLine} />
+              <span className={styles.burgerLine} />
+            </button>
+
+            {mobileOpen && (
+              <div className={styles.burgerMenu}>
+                {!isAuthed ? (
+                  <>
+                    <button
+                      type="button"
+                      className={styles.burgerItem}
+                      onClick={() => {
+                        closeMobile();
+                        onAddListing?.();
+                      }}
+                    >
+                      Додати об’єкт
+                    </button>
+
+                    <button
+                      type="button"
+                      className={styles.burgerItem}
+                      onClick={() => {
+                        closeMobile();
+                        onSignUp?.();
+                      }}
+                    >
+                      Реєстрація
+                    </button>
+
+                    <button
+                      type="button"
+                      className={`${styles.burgerItem} ${styles.burgerItemPrimary}`}
+                      onClick={() => {
+                        closeMobile();
+                        onSignIn?.();
+                      }}
+                    >
+                      Увійти
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className={styles.burgerItem}
+                      onClick={() => go("/profile")}
+                    >
+                      Мій профіль
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.burgerItem}
+                      onClick={() => go("/my-listings")}
+                    >
+                      Мої оголошення
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.burgerItem}
+                      onClick={() => go("/listings?fav=1")}
+                    >
+                      Обране
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.burgerItem}
+                      onClick={() => go("/requests")}
+                    >
+                      Заявки
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.burgerItem}
+                      onClick={() => {
+                        closeMobile();
+                        onAddListing?.();
+                      }}
+                    >
+                      Додати об’єкт
+                    </button>
+
+                    <div className={styles.burgerDivider} />
+
+                    <button
+                      type="button"
+                      className={`${styles.burgerItem} ${styles.burgerItemDanger}`}
+                      onClick={() => {
+                        closeMobile();
+                        onLogout?.();
+                      }}
+                    >
+                      Вийти
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </header>

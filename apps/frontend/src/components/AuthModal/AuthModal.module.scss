@@ -6,28 +6,61 @@
 .label {
   display: grid;
   gap: 8px;
-  font-weight: 800;
-  color: rgba(0, 0, 0, 0.75);
+
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0;
+
+  color: var(--color-text-primary);
 }
 
 .input {
   height: 46px;
-  border-radius: 50px;
+  border-radius: 30px;
   border: 1px solid rgba(0, 0, 0, 0.18);
   padding: 0 16px;
-  font-weight: 700;
-  background: #fff;
+
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0;
+
+  background: var(--color-white);
   outline: none;
 
   &:focus {
-    border-color: rgba(255, 90, 95, 0.7);
-    box-shadow: 0 0 0 4px rgba(255, 90, 95, 0.14);
+    border-color: rgba(255, 78, 102, 0.7);
+    box-shadow: 0 0 0 4px rgba(255, 78, 102, 0.14);
+  }
+
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
   }
 }
 
 .hint {
-  color: rgba(0, 0, 0, 0.55);
-  font-size: 14px;
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0;
+  color: var(--color-text-secondary);
 }
 
 .error {
@@ -35,7 +68,16 @@
   background: rgba(212, 0, 42, 0.08);
   border-radius: 14px;
   padding: 10px 12px;
-  font-weight: 700;
+
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0;
 }
 
 .actions {
@@ -48,12 +90,30 @@
 .primaryBtn {
   height: 44px;
   padding: 0 18px;
-  border-radius: 50px;
+  border-radius: 30px;
   border: 0;
+
   background: var(--color-primary);
-  color: #fff;
-  font-weight: 800;
+  color: var(--color-white);
+
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0;
+
   cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    opacity 150ms ease;
+
+  &:hover {
+    background-color: var(--color-primary-hover);
+  }
 
   &:disabled {
     opacity: 0.6;
@@ -64,14 +124,52 @@
 .ghostBtn {
   height: 44px;
   padding: 0 18px;
-  border-radius: 50px;
+  border-radius: 30px;
   border: 1px solid rgba(0, 0, 0, 0.22);
-  background: #fff;
-  font-weight: 800;
+
+  background: var(--color-white);
+  color: var(--color-text-primary);
+
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0;
+
   cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    opacity 150ms ease;
+
+  &:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
 
   &:disabled {
     opacity: 0.6;
     cursor: default;
+  }
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+  .actions {
+    justify-content: flex-end;
+  }
+}
+
+/* Mobile */
+@media (max-width: 560px) {
+  .actions {
+    flex-direction: column;
+  }
+
+  .primaryBtn,
+  .ghostBtn {
+    width: 100%;
   }
 }

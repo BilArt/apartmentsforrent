@@ -19,9 +19,17 @@ function buildUrl(q, limit) {
   return url.toString();
 }
 
-function CityAutocomplete({
+function valueToLabel(value, valueMode) {
+  if (!value) return "";
+  if (valueMode === "object") return displayName(value) || "";
+  return String(value || "");
+}
+
+export default function CityAutocomplete({
   value,
   onChange,
+
+  valueMode = "string",
 
   label = "Населений пункт",
   showLabel = true,
@@ -33,7 +41,7 @@ function CityAutocomplete({
   dropdownClassName,
   optionClassName,
 }) {
-  const [query, setQuery] = useState(String(value || ""));
+  const [query, setQuery] = useState(() => valueToLabel(value, valueMode));
   const [results, setResults] = useState([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -43,8 +51,8 @@ function CityAutocomplete({
   const containerRef = useRef(null);
 
   useEffect(() => {
-    setQuery(String(value || ""));
-  }, [value]);
+    setQuery(valueToLabel(value, valueMode));
+  }, [value, valueMode]);
 
   useEffect(() => {
     const onDocClick = (e) => {
@@ -63,15 +71,18 @@ function CityAutocomplete({
       setErr(null);
       setLoading(false);
       setOpen(false);
-      if (String(value || "") !== "") onChange?.("");
+
+      if (valueMode === "object") {
+        if (value) onChange?.(null);
+      } else {
+        if (String(value || "") !== "") onChange?.("");
+      }
+
       return;
     }
 
-    if (
-      String(value || "")
-        .trim()
-        .toLowerCase() === q.toLowerCase()
-    ) {
+    const currentLabel = valueToLabel(value, valueMode).trim();
+    if (currentLabel && currentLabel.toLowerCase() === q.toLowerCase()) {
       setResults([]);
       setErr(null);
       setLoading(false);
@@ -98,12 +109,14 @@ function CityAutocomplete({
       try {
         const res = await fetch(buildUrl(q, limit), {
           signal: controller.signal,
+          credentials: "include",
         });
 
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
         const data = await res.json();
         const arr = Array.isArray(data) ? data : [];
+
         setResults(arr);
         setOpen(arr.length > 0);
       } catch (e) {
@@ -117,12 +130,19 @@ function CityAutocomplete({
     }, 250);
 
     return () => clearTimeout(t);
-  }, [query, limit, onChange, value]);
+  }, [query, limit, onChange, value, valueMode]);
 
   const handlePick = (s) => {
     const name = displayName(s) || "";
-    onChange?.(name);
-    setQuery(name);
+
+    if (valueMode === "object") {
+      onChange?.(s);
+      setQuery(name);
+    } else {
+      onChange?.(name);
+      setQuery(name);
+    }
+
     setOpen(false);
     setResults([]);
     setErr(null);
@@ -132,9 +152,9 @@ function CityAutocomplete({
     const q = query.trim();
     if (!q) return;
 
-    const v = String(value || "").trim();
-    if (v && v.toLowerCase() !== q.toLowerCase()) {
-      setQuery(v);
+    const currentLabel = valueToLabel(value, valueMode).trim();
+    if (currentLabel && currentLabel.toLowerCase() !== q.toLowerCase()) {
+      setQuery(currentLabel);
     }
   };
 
@@ -162,12 +182,12 @@ function CityAutocomplete({
         <ul className={cx(styles.dropdown, dropdownClassName)}>
           {results.map((s) => (
             <li
-              key={s.id}
+              key={String(s?.id ?? s?.geonameId ?? displayName(s))}
               className={cx(styles.item, optionClassName)}
               onMouseDown={(e) => e.preventDefault()}
               onClick={() => handlePick(s)}
             >
-              <div className={styles.title}>{displayName(s) || s.name}</div>
+              <div className={styles.title}>{displayName(s) || s?.name}</div>
             </li>
           ))}
         </ul>
@@ -188,5 +208,3 @@ function CityAutocomplete({
     </div>
   );
 }
-
-export default CityAutocomplete;

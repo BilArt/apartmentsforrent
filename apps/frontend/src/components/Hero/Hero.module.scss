@@ -16,7 +16,6 @@
   content: "";
   position: absolute;
   inset: 0;
-
   background: linear-gradient(
     to bottom,
     #fff 0%,
@@ -24,7 +23,6 @@
     rgba(255, 255, 255, 0.7) 50%,
     rgba(255, 255, 255, 0) 75%
   );
-
   pointer-events: none;
   z-index: 1;
 }
@@ -42,21 +40,28 @@
     -apple-system,
     sans-serif;
   font-weight: 700;
-  font-size: 48px;
+  font-size: 40px;
+  line-height: 1;
+  letter-spacing: 0;
+
   color: var(--color-primary);
   margin: 0;
 }
 
 .subtitle {
+  margin: 0;
+
   font-family:
     "Inter",
     system-ui,
     -apple-system,
     sans-serif;
-  font-weight: 400;
-  font-size: 30px;
+  font-weight: 600; /* по канону */
+  font-size: 30px; /* по канону */
+  line-height: 1;
+  letter-spacing: 0;
+
   color: var(--color-secondary);
-  margin: 0;
 }
 
 .accent {
@@ -65,4 +70,38 @@
 
 .searchWrapper {
   margin-top: 100px;
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+  .hero {
+    min-height: 640px;
+    padding-top: 140px;
+    background-position: center right;
+    background-size: cover;
+  }
+
+  .searchWrapper {
+    margin-top: 60px;
+  }
+}
+
+/* Mobile */
+@media (max-width: 560px) {
+  .hero {
+    min-height: 560px;
+    padding-top: 110px;
+  }
+
+  .title {
+    font-size: 30px;
+  }
+
+  .subtitle {
+    font-size: 16px;
+  }
+
+  .searchWrapper {
+    margin-top: 36px;
+  }
 }

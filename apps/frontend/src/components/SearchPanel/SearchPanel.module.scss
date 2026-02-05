@@ -1,8 +1,21 @@
+@use "../../styles/variables" as *;
+
 .card {
-  background: #fff;
-  border-radius: 28px;
+  background: var(--color-surface, #fff);
+  border-radius: 30px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+
   padding: 28px 32px;
+
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--color-text-primary, #222);
 }
 
 .title {
@@ -10,6 +23,7 @@
   font-size: 40px;
   line-height: 1.1;
   font-weight: 700;
+  letter-spacing: 0;
 }
 
 .grid {
@@ -26,7 +40,7 @@
 
 .label {
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text-primary, #222);
 }
 
 .control {
@@ -36,11 +50,22 @@
   input {
     width: 100%;
     height: 44px;
-    border-radius: 999px;
-    border: 1px solid rgba(0, 0, 0, 0.25);
-    padding: 0 56px 0 16px;
+    border-radius: 30px;
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    padding: 0 52px 0 16px;
     outline: none;
     background: #fff;
+
+    font-size: 16px;
+
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease;
+
+    &:focus {
+      border-color: rgba(0, 0, 0, 0.35);
+      box-shadow: 0 0 0 4px rgba(255, 92, 98, 0.18);
+    }
   }
 }
 
@@ -76,11 +101,22 @@
   input {
     width: 100%;
     height: 44px;
-    border-radius: 999px;
-    border: 1px solid rgba(0, 0, 0, 0.25);
+    border-radius: 30px;
+    border: 1px solid rgba(0, 0, 0, 0.18);
     padding: 0 16px;
     outline: none;
     background: #fff;
+
+    font-size: 16px;
+
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease;
+
+    &:focus {
+      border-color: rgba(0, 0, 0, 0.35);
+      box-shadow: 0 0 0 4px rgba(255, 92, 98, 0.18);
+    }
   }
 }
 
@@ -96,15 +132,25 @@
 }
 
 .roundBtn {
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.25);
+  width: 36px;
+  height: 36px;
+  border-radius: 30px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
   background: #fff;
   cursor: pointer;
 
+  transition:
+    background 140ms ease,
+    transform 120ms ease,
+    border-color 140ms ease;
+
   &:hover {
     background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.24);
+  }
+
+  &:active {
+    transform: scale(0.98);
   }
 }
 
@@ -121,14 +167,23 @@
 .selectBtn {
   width: 100%;
   height: 44px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 30px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
   padding: 0 52px 0 16px;
   background: #fff;
   cursor: pointer;
 
   display: flex;
   align-items: center;
+
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(255, 92, 98, 0.18);
+  }
 }
 
 .selectValue {
@@ -137,7 +192,8 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--color-secondary);
+
+  color: var(--color-secondary, rgba(0, 0, 0, 0.55));
   font-size: 16px;
 }
 
@@ -163,14 +219,16 @@
 
 .dropdownSmall {
   position: absolute;
-  top: calc(100% + 14px);
+  top: calc(100% + 12px);
   left: 0;
 
   width: 260px;
   background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
-  padding: 16px;
+  border-radius: 22px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
+
+  padding: 12px;
   z-index: 50;
 }
 
@@ -184,15 +242,17 @@
   width: 100%;
   border: 0;
   background: transparent;
-  padding: 10px 8px;
-  border-radius: 12px;
+  padding: 10px 10px;
+  border-radius: 16px;
 
   display: flex;
   align-items: center;
   gap: 10px;
 
   cursor: pointer;
-  color: var(--color-secondary);
+  color: var(--color-secondary, rgba(0, 0, 0, 0.55));
+
+  transition: background-color 140ms ease;
 
   &:hover {
     background: rgba(0, 0, 0, 0.04);
@@ -200,13 +260,13 @@
 }
 
 .itemText {
-  font-size: 13px;
-  color: var(--color-secondary);
+  font-size: 14px;
+  color: var(--color-secondary, rgba(0, 0, 0, 0.55));
 }
 
 .calendarWrap {
   position: absolute;
-  top: calc(100% + 14px);
+  top: calc(100% + 12px);
   left: 0;
   z-index: 70;
 }
@@ -221,12 +281,13 @@
 .moreLink {
   border: 0;
   background: transparent;
-  color: var(--color-primary);
+  color: var(--color-primary, #ff5c62);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 10px;
   font-size: 14px;
+  font-weight: 600;
 }
 
 .chevDown,
@@ -286,13 +347,13 @@
 
 .toggleLabel {
   font-weight: 600;
-  color: var(--color-text-primary);
+  color: var(--color-text-primary, #222);
 }
 
 .toggle {
   width: 56px;
   height: 30px;
-  border-radius: 999px;
+  border-radius: 30px;
   border: 0;
   cursor: pointer;
   background: rgba(0, 0, 0, 0.2);
@@ -301,13 +362,13 @@
 }
 
 .toggleOn {
-  background: #ff5a5f;
+  background: var(--color-primary, #ff5c62);
 }
 
 .knob {
   width: 24px;
   height: 24px;
-  border-radius: 999px;
+  border-radius: 30px;
   background: #fff;
   position: absolute;
   top: 3px;
@@ -339,6 +400,7 @@
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  font-weight: 600;
 
   &:hover {
     color: rgba(0, 0, 0, 0.8);
@@ -348,47 +410,67 @@
 .searchBtn {
   height: 44px;
   padding: 0 22px;
-  border-radius: 999px;
+  border-radius: 30px;
   border: 0;
-  background-color: var(--color-primary);
+  background-color: var(--color-primary, #ff5c62);
   color: #fff;
   cursor: pointer;
+  font-weight: 600;
+  font-size: 16px;
 
   transition:
-    color 200ms ease,
-    background-color 200ms ease;
+    transform 120ms ease,
+    background-color 160ms ease;
 
   &:hover {
     background-color: #ff7377;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
   }
 }
 
-.cityInput {
-  width: 100%;
-  height: 44px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.25);
-  padding: 0 56px 0 16px;
-  outline: none;
-  background: #fff;
+@media (max-width: 1100px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .toggles {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
-.cityDropdown {
-  position: absolute;
-  top: calc((100% + 14px));
-  left: 0;
-  right: 0;
+@media (max-width: 640px) {
+  .card {
+    padding: 18px 16px;
+  }
 
-  background: #fff;
-  border-radius: 18px;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
-  padding: 10px;
-  z-index: 80;
+  .title {
+    font-size: 30px;
+  }
 
-  max-height: 320px;
-  overflow: auto;
-}
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
 
-.cityOption {
-  cursor: pointer;
+  .toggles {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .bottomRow {
+    justify-content: stretch;
+  }
+
+  .actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .searchBtn {
+    flex: 0 0 auto;
+  }
 }

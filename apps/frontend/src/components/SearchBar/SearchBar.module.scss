@@ -1,3 +1,5 @@
+@use "../../styles/variables" as *;
+
 .wrapper {
   width: 100%;
   display: flex;
@@ -7,18 +9,26 @@
 .bar {
   width: min(980px, 100%);
   height: 56px;
-  background: #fff;
-  border-radius: 28px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+
+  background: var(--color-surface, #fff);
+  border-radius: 30px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+
   display: flex;
   align-items: center;
   position: relative;
+
   padding-right: 56px;
+
   font-family:
     "Inter",
     system-ui,
     -apple-system,
     sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--color-text-primary, #222);
 }
 
 .field {
@@ -29,18 +39,25 @@
   min-width: 0;
 }
 
+.divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.08);
+}
+
 .trigger {
   height: 100%;
   width: 320px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   padding: 0 18px;
+
   border: 0;
   background: transparent;
   cursor: text;
-  color: var(--color-secondary);
+
+  color: var(--color-secondary, rgba(0, 0, 0, 0.55));
 }
 
 .inputWrap {
@@ -57,40 +74,55 @@
   width: 100%;
   min-width: 0;
   background: transparent;
-}
-
-.input::placeholder {
   font-size: 16px;
   font-weight: 400;
-  color: var(--color-secondary);
+  color: var(--color-text-primary, #222);
+
+  &::placeholder {
+    color: var(--color-secondary, rgba(0, 0, 0, 0.55));
+  }
+}
+
+.locationIcon {
+  width: 18px;
+  height: 20px;
+  flex: 0 0 auto;
+  display: block;
+
+  svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+    color: currentColor;
+    stroke: currentColor;
+  }
 }
 
 .triggerText {
   height: 100%;
   min-width: 180px;
   padding: 0 18px;
+
   border: 0;
   background: transparent;
+
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+
   cursor: pointer;
-  color: var(--color-secondary);
+  color: var(--color-secondary, rgba(0, 0, 0, 0.55));
 }
 
 .valueText {
   font-size: 16px;
+  font-weight: 400;
+  color: var(--color-secondary, rgba(0, 0, 0, 0.55));
+
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--color-secondary);
-}
-
-.divider {
-  width: 1px;
-  height: 28px;
-  background: rgba(0, 0, 0, 0.08);
 }
 
 .chevron {
@@ -102,17 +134,26 @@
   flex: 0 0 auto;
 }
 
-/* DROPDOWNS (location) */
+.chevDown {
+  transform: rotate(45deg);
+}
+.chevUp {
+  transform: rotate(-135deg);
+}
+
 .dropdown {
   position: absolute;
   top: calc(100% + 12px);
   left: 0;
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
+
+  background: var(--color-surface, #fff);
+  border-radius: 22px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
+
   padding: 12px;
   z-index: 20;
-  width: 330px;
+  width: 340px;
 }
 
 .section {
@@ -129,7 +170,7 @@
   font-size: 14px;
   font-weight: 600;
   margin-bottom: 8px;
-  color: var(--color-text-primary);
+  color: var(--color-text-primary, #222);
 }
 
 .list {
@@ -142,13 +183,17 @@
   width: 100%;
   border: 0;
   background: transparent;
-  padding: 8px 8px;
-  border-radius: 10px;
+  padding: 10px 10px;
+  border-radius: 16px;
+
   display: flex;
   align-items: center;
   gap: 10px;
+
   cursor: pointer;
-  color: var(--color-secondary);
+  color: var(--color-secondary, rgba(0, 0, 0, 0.55));
+
+  transition: background-color 140ms ease;
 
   &:hover {
     background: rgba(0, 0, 0, 0.04);
@@ -156,57 +201,11 @@
 }
 
 .itemText {
-  font-size: 12px;
-  color: var(--color-secondary);
-}
-
-.moreBtn {
-  margin-top: 6px;
-  border: 0;
-  background: transparent;
-  font-size: 12px;
-  cursor: pointer;
-  color: var(--color-primary);
-}
-
-/* SEARCH BUTTON */
-.searchBtn {
-  position: absolute;
-  right: 8px;
-
-  width: 40px;
-  height: 40px;
-  border-radius: 60px;
-  border: 0;
-  cursor: pointer;
-
-  background-color: var(--color-primary);
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  transition:
-    color 200ms ease,
-    border-color 200ms ease,
-    background-color 200ms ease;
-
-  &:hover {
-    background-color: #ff7377;
-  }
-}
-
-.searchIcon {
-  width: 18px;
-  height: 18px;
-  display: block;
-}
-
-.locationIcon {
-  width: 18px;
-  height: 20px;
-  flex: 0 0 auto;
-  display: block;
+  font-size: 14px;
+  color: var(--color-secondary, rgba(0, 0, 0, 0.55));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .icon {
@@ -221,28 +220,8 @@
     width: 100%;
     height: 100%;
     display: block;
-  }
-}
-
-.chevDown {
-  transform: rotate(45deg);
-}
-.chevUp {
-  transform: rotate(-135deg);
-}
-
-.popAnim {
-  animation: popIn 160ms ease;
-}
-
-@keyframes popIn {
-  from {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
+    color: currentColor;
+    stroke: currentColor;
   }
 }
 
@@ -257,11 +236,13 @@
   position: absolute;
   top: calc(100% + 12px);
   left: 0;
-  width: 280px;
+  width: 300px;
 
-  background: #fff;
-  border-radius: 16px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.16);
+  background: var(--color-surface, #fff);
+  border-radius: 22px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.16);
+
   padding: 12px;
   z-index: 20;
 }
@@ -275,8 +256,8 @@
 
 .roomsTitle {
   font-size: 14px;
-  font-weight: 500;
-  color: var(--color-secondary);
+  font-weight: 600;
+  color: var(--color-secondary, rgba(0, 0, 0, 0.55));
 }
 
 .counter {
@@ -286,24 +267,35 @@
 }
 
 .counterBtn {
-  width: 30px;
-  height: 30px;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 0, 0, 0.22);
+  width: 34px;
+  height: 34px;
+  border-radius: 30px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
   background: #fff;
   cursor: pointer;
-  color: rgba(0, 0, 0, 0.55);
+
+  color: rgba(0, 0, 0, 0.65);
+
+  transition:
+    background 140ms ease,
+    transform 120ms ease,
+    border-color 140ms ease;
 
   &:hover {
     background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.24);
+  }
+
+  &:active {
+    transform: scale(0.98);
   }
 }
 
 .counterValue {
-  min-width: 16px;
+  min-width: 18px;
   text-align: center;
   font-weight: 600;
-  color: rgba(0, 0, 0, 0.55);
+  color: rgba(0, 0, 0, 0.65);
 }
 
 .roomsDivider {
@@ -321,14 +313,14 @@
 
 .toggleLabel {
   font-size: 14px;
-  font-weight: 500;
-  color: var(--color-secondary);
+  font-weight: 600;
+  color: var(--color-secondary, rgba(0, 0, 0, 0.55));
 }
 
 .toggle {
-  width: 50px;
-  height: 28px;
-  border-radius: 999px;
+  width: 56px;
+  height: 30px;
+  border-radius: 30px;
   border: 0;
   cursor: pointer;
   background: rgba(0, 0, 0, 0.2);
@@ -337,13 +329,13 @@
 }
 
 .toggleOn {
-  background: var(--color-primary);
+  background: var(--color-primary, #ff5c62);
 }
 
 .knob {
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
+  width: 24px;
+  height: 24px;
+  border-radius: 30px;
   background: #fff;
   position: absolute;
   top: 3px;
@@ -352,5 +344,113 @@
 }
 
 .toggleOn .knob {
-  transform: translateX(22px);
+  transform: translateX(26px);
+}
+
+.searchBtn {
+  position: absolute;
+  right: 8px;
+
+  width: 40px;
+  height: 40px;
+  border-radius: 30px;
+  border: 0;
+
+  cursor: pointer;
+  background-color: var(--color-primary, #ff5c62);
+  color: #fff;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition:
+    background-color 160ms ease,
+    transform 120ms ease;
+
+  &:hover {
+    background-color: #ff7377;
+    transform: scale(1.03);
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.searchIcon {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
+.popAnim {
+  animation: popIn 160ms ease;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+  .bar {
+    height: auto;
+    padding: 10px 56px 10px 10px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .divider {
+    display: none;
+  }
+
+  .trigger,
+  .triggerText {
+    height: 44px;
+    border-radius: 30px;
+    background: rgba(0, 0, 0, 0.03);
+  }
+
+  .trigger {
+    width: min(100%, 520px);
+  }
+
+  .triggerText {
+    min-width: 0;
+    width: fit-content;
+    padding: 0 14px;
+  }
+
+  .dropdown {
+    width: min(420px, calc(100vw - 24px));
+  }
+}
+
+/* Mobile */
+
+@media (max-width: 520px) {
+  .bar {
+    padding-right: 52px;
+  }
+
+  .trigger {
+    width: 100%;
+  }
+
+  .triggerText {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .dropdownRooms {
+    width: min(360px, calc(100vw - 24px));
+  }
 }

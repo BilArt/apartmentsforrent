@@ -22,6 +22,11 @@ export default function FavoritesPage({
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState("");
 
+  const favoriteKey = useMemo(() => {
+    if (!favoriteSet || favoriteSet.size === 0) return "";
+    return Array.from(favoriteSet).map(String).sort().join(",");
+  }, [favoriteSet]);
+
   useEffect(() => {
     let alive = true;
 
@@ -56,26 +61,24 @@ export default function FavoritesPage({
     return () => {
       alive = false;
     };
-  }, [canFavorite, favoriteSet]);
+  }, [canFavorite, favoriteKey]);
 
-  // если favoriteSet изменился — синкаем items (без лишних загрузок)
   useEffect(() => {
     if (!canFavorite) return;
 
     setItems((prev) =>
       prev
         .filter((x) => favoriteSet.has(String(x.id)))
-        .map((x) => ({ ...x, isFavorite: true }))
+        .map((x) => ({ ...x, isFavorite: true })),
     );
-  }, [canFavorite, favoriteSet]);
+  }, [canFavorite, favoriteKey]);
 
   const onToggleFav = useCallback(
     async (listingId) => {
       if (!canFavorite) return;
       await onToggleFavorite?.(listingId);
-      // items обновятся эффектом выше
     },
-    [canFavorite, onToggleFavorite]
+    [canFavorite, onToggleFavorite],
   );
 
   const isEmpty = status === "ok" && items.length === 0;

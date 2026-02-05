@@ -1,3 +1,5 @@
+@use "../../styles/variables" as *;
+
 .card {
   width: 720px;
   max-width: calc(100vw - 32px);
@@ -12,6 +14,20 @@
 .form {
   display: grid;
   gap: 14px;
+
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--color-text-primary, #222);
+}
+
+.subtitle {
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.65);
 }
 
 .field {
@@ -21,8 +37,8 @@
 }
 
 .label {
-  font-weight: 700;
-  color: var(--color-text-primary);
+  font-weight: 600;
+  color: var(--color-text-primary, #222);
   padding-left: 10px;
 }
 
@@ -32,11 +48,45 @@
   input {
     width: 100%;
     height: 44px;
-    border-radius: 50px;
-    border: 1px solid rgba(0, 0, 0, 0.25);
-    padding: 0 16px;
+    border-radius: 30px;
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    padding: 0 44px 0 16px;
     outline: none;
     background: #fff;
+
+    font-size: 16px;
+
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease;
+
+    &:focus {
+      border-color: rgba(0, 0, 0, 0.35);
+      box-shadow: 0 0 0 4px rgba(255, 92, 98, 0.18);
+    }
+  }
+}
+
+.clearBtn {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: 0;
+  background: transparent;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    display: block;
   }
 }
 
@@ -47,14 +97,23 @@
 .selectBtn {
   width: 100%;
   height: 44px;
-  border-radius: 50px;
-  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 30px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
   padding: 0 52px 0 16px;
   background: #fff;
   cursor: pointer;
 
   display: flex;
   align-items: center;
+
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(255, 92, 98, 0.18);
+  }
 }
 
 .selectValue {
@@ -86,7 +145,7 @@
 
 .calendarWrap {
   position: absolute;
-  top: calc(100% + 14px);
+  top: calc(100% + 12px);
   left: 0;
   z-index: 9999;
 }
@@ -94,12 +153,31 @@
 .textarea {
   width: 100%;
   min-height: 140px;
-  border-radius: 18px;
-  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 22px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
   padding: 14px 16px;
   outline: none;
   resize: vertical;
   background: #fff;
+
+  font-size: 16px;
+
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+
+  &:focus {
+    border-color: rgba(0, 0, 0, 0.35);
+    box-shadow: 0 0 0 4px rgba(255, 92, 98, 0.18);
+  }
+}
+
+.error {
+  padding: 10px 12px;
+  border-radius: 22px;
+  background: rgba(255, 92, 98, 0.12);
+  color: rgba(180, 0, 0, 0.9);
+  font-weight: 600;
 }
 
 .actions {
@@ -113,30 +191,27 @@
 .cancelBtn {
   height: 44px;
   padding: 0 18px;
-  border-radius: 50px;
-  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 30px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
   background: #fff;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 10px;
+  font-weight: 600;
+
+  transition:
+    background 140ms ease,
+    transform 120ms ease,
+    border-color 140ms ease;
 
   &:hover {
     background: rgba(0, 0, 0, 0.03);
+    border-color: rgba(0, 0, 0, 0.24);
   }
-}
 
-.submitBtn {
-  height: 44px;
-  padding: 0 22px;
-  border-radius: 50px;
-  border: 0;
-  background-color: var(--color-primary);
-  color: #fff;
-  cursor: pointer;
-
-  &:hover {
-    background-color: #ff7377;
+  &:active {
+    transform: translateY(1px);
   }
 
   &:disabled {
@@ -145,9 +220,54 @@
   }
 }
 
+.submitBtn {
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 30px;
+  border: 0;
+  background-color: var(--color-primary, #ff5c62);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 16px;
+
+  transition:
+    transform 120ms ease,
+    background-color 160ms ease;
+
+  &:hover {
+    background-color: #ff7377;
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: default;
+    transform: none;
+  }
+}
+
 .note {
   margin-top: 12px;
   color: rgba(0, 0, 0, 0.45);
   font-weight: 600;
   font-size: 14px;
+}
+
+/* Mobile */
+@media (max-width: 520px) {
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cancelBtn,
+  .submitBtn {
+    width: 100%;
+    justify-content: center;
+  }
 }

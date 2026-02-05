@@ -20,8 +20,6 @@ function RegisterForm({ onRegistered, onGoSignIn, onBankId }) {
     try {
       setError(null);
 
-      // Важно: твой бэк требует bankId, поэтому для “обычной регистрации”
-      // мы отправляем мок bankId.
       const payload = {
         firstName: firstName.trim(),
         lastName: lastName.trim(),

@@ -1,25 +1,37 @@
 .dropdownCalendar {
   width: 320px;
-  background: #fff;
+  background: var(--color-white);
   border-radius: 20px;
   box-shadow: 0 16px 34px rgba(0, 0, 0, 0.16);
   padding: 14px;
 }
 
 .todayPill {
-  border-radius: 50px;
+  border-radius: 30px;
   border: 1px solid var(--color-primary);
   background: transparent;
   color: var(--color-primary);
   padding: 8px 12px;
   cursor: pointer;
+
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
   font-weight: 600;
-  font-size: 13px;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0;
+
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
 }
 
 .todayPillActive {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-white);
 }
 
 .calHeader {
@@ -30,9 +42,17 @@
 }
 
 .calTitle {
-  font-size: 18px;
-  font-weight: 700;
-  color: rgba(0, 0, 0, 0.6);
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: 0;
+
+  color: var(--color-text-primary);
 }
 
 .calNav {
@@ -44,13 +64,16 @@
 .navBtn {
   width: 30px;
   height: 30px;
-  border-radius: 999px;
+  border-radius: 30px;
   border: 0;
   background: transparent;
   cursor: pointer;
+
   font-size: 22px;
   line-height: 1;
+
   color: rgba(0, 0, 0, 0.45);
+  transition: background-color 150ms ease;
 
   &:hover {
     background: rgba(0, 0, 0, 0.05);
@@ -66,9 +89,18 @@
 
 .weekday {
   text-align: center;
-  font-weight: 700;
-  color: rgba(0, 0, 0, 0.75);
-  font-size: 13px;
+
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-weight: 600;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0;
+
+  color: var(--color-text-primary);
 }
 
 .daysGrid {
@@ -84,15 +116,29 @@
 
 .dayBtn {
   height: 30px;
-  border-radius: 50px;
+  border-radius: 30px;
   border: 0;
   background: transparent;
   cursor: pointer;
-  color: rgba(0, 0, 0, 0.55);
-  font-size: 13px;
+
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 0;
+
+  color: var(--color-text-secondary);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
 
   &:hover {
     background: rgba(0, 0, 0, 0.05);
+    color: var(--color-text-primary);
   }
 
   &:disabled {
@@ -103,9 +149,28 @@
 
 .daySelected {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-white);
 
   &:hover {
     background: var(--color-primary);
+    color: var(--color-white);
+  }
+}
+
+/* Mobile */
+@media (max-width: 560px) {
+  .dropdownCalendar {
+    width: 280px;
+    padding: 12px;
+  }
+
+  .navBtn {
+    width: 28px;
+    height: 28px;
+  }
+
+  .dayBtn,
+  .dayEmpty {
+    height: 28px;
   }
 }

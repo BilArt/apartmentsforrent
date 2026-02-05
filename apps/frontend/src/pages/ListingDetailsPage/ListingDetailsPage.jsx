@@ -1,3 +1,4 @@
+// src/pages/ListingDetailsPage/ListingDetailsPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
@@ -15,6 +16,23 @@ function getCityLabel(city) {
 function formatPrice(value) {
   if (typeof value !== "number" || !Number.isFinite(value)) return "—";
   return value.toLocaleString("uk-UA");
+}
+
+// ✅ ISO -> "YYYY-MM-DD" (без времени и Z-адов)
+function formatDateOnly(value) {
+  if (!value) return "—";
+
+  const d =
+    value instanceof Date
+      ? value
+      : new Date(
+          typeof value === "string" || typeof value === "number" ? value : "",
+        );
+
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "—";
+
+  // стабильный формат
+  return d.toISOString().slice(0, 10);
 }
 
 function getImages(listing) {
@@ -43,6 +61,23 @@ function getImages(listing) {
   return resolved;
 }
 
+// ✅ pills: как в ListingCard
+function buildFeatures(listing) {
+  const f = listing?.features || listing;
+
+  const items = [
+    { key: "kitchen", label: "Окрема кухня", on: Boolean(f?.kitchen) },
+    { key: "balcony", label: "Балкон", on: Boolean(f?.balcony) },
+    { key: "pets", label: "Тварини", on: Boolean(f?.pets) },
+    { key: "lift", label: "Ліфт", on: Boolean(f?.lift) },
+    { key: "parking", label: "Паркінг", on: Boolean(f?.parking) },
+    { key: "furnished", label: "З меблями", on: Boolean(f?.furnished) },
+    { key: "storage", label: "Комора", on: Boolean(f?.storage) },
+  ];
+
+  return items.filter((x) => x.on);
+}
+
 function getListingOwnerId(listing) {
   if (!listing || typeof listing !== "object") return null;
 
@@ -57,7 +92,7 @@ function getListingOwnerId(listing) {
   ];
 
   const found = candidates.find(
-    (v) => v !== undefined && v !== null && v !== ""
+    (v) => v !== undefined && v !== null && v !== "",
   );
   return found ? String(found) : null;
 }
@@ -145,6 +180,13 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
   const images = useMemo(() => getImages(item), [item]);
   const mainImage = images[Math.min(activeImg, images.length - 1)];
 
+  const features = useMemo(() => buildFeatures(item), [item]);
+
+  const availableFromLabel = useMemo(
+    () => formatDateOnly(item?.availableFrom),
+    [item?.availableFrom],
+  );
+
   const isOwnListing = useMemo(() => {
     const uid = currentUser?.id ? String(currentUser.id) : null;
     const oid = getListingOwnerId(item);
@@ -195,7 +237,6 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
     };
   }, [canCheckMyRequest, isOwnListing, item?.id]);
 
-  // ✅ слушаем события из RequestsPage и ViewingRequestForm
   useEffect(() => {
     if (!item?.id) return;
 
@@ -214,7 +255,7 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
         .then((myList) => {
           const arr = Array.isArray(myList) ? myList : [];
           const found = arr.find(
-            (r) => String(r?.listingId) === String(item.id)
+            (r) => String(r?.listingId) === String(item.id),
           );
           setMyRequest(found || null);
           setMyReqStatus("ok");
@@ -235,24 +276,20 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
       if (!d) return;
       if (String(d.listingId) !== String(item.id)) return;
 
-      // 🔥 если заявка только что создана — показываем ее сразу (даже без id)
       if (e.type === "requestCreated") {
         setMyReqStatus("ok");
         setMyReqError("");
         setMyRequest((prev) => {
           if (prev?.listingId && String(prev.listingId) === String(item.id)) {
-            // уже есть — оставим
             return prev;
           }
           return { listingId: String(item.id), status: d.status || "PENDING" };
         });
 
-        // подтянем реальный объект с id
         doRefreshMyRequest();
         return;
       }
 
-      // requestStatusChanged: обновляем статус локально (даже если id еще нет)
       if (e.type === "requestStatusChanged") {
         setMyReqStatus("ok");
         setMyReqError("");
@@ -264,7 +301,6 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
           return { ...prev, status: d.status };
         });
 
-        // и подтянем свежие данные (id/status)
         doRefreshMyRequest();
       }
     };
@@ -286,7 +322,7 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
   const goToRequests = () => {
     if (!item?.id) return;
     navigate(
-      `/requests?tab=my&listingId=${encodeURIComponent(String(item.id))}`
+      `/requests?tab=my&listingId=${encodeURIComponent(String(item.id))}`,
     );
   };
 
@@ -347,7 +383,7 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
 
               <div className={styles.mainCard}>
                 <div className={styles.headerRow}>
-                  <div>
+                  <div className={styles.headerLeft}>
                     <h1 className={styles.title}>{title}</h1>
                     <div className={styles.subtitle}>
                       {cityLabel}
@@ -357,6 +393,23 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
 
                   <div className={styles.price}>{priceLabel}</div>
                 </div>
+
+                {features.length > 0 && (
+                  <div className={styles.features} aria-label="Features">
+                    {features.slice(0, 6).map((f) => (
+                      <span key={f.key} className={styles.featurePill}>
+                        {f.label}
+                      </span>
+                    ))}
+                    {features.length > 6 && (
+                      <span
+                        className={`${styles.featurePill} ${styles.featureMore}`}
+                      >
+                        +{features.length - 6}
+                      </span>
+                    )}
+                  </div>
+                )}
 
                 <div className={styles.divider} />
 
@@ -383,10 +436,7 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
                     </div>
                   </div>
 
-                  <div className={styles.metaItem}>
-                    <div className={styles.metaLabel}>ID</div>
-                    <div className={styles.metaValue}>{item.id}</div>
-                  </div>
+                  {/* ✅ ID удалён */}
 
                   {typeof item.rooms === "number" && item.rooms > 0 ? (
                     <div className={styles.metaItem}>
@@ -406,7 +456,7 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
                     <div className={styles.metaItem}>
                       <div className={styles.metaLabel}>Доступно від</div>
                       <div className={styles.metaValue}>
-                        {String(item.availableFrom)}
+                        {availableFromLabel}
                       </div>
                     </div>
                   ) : null}
@@ -449,7 +499,9 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
                         ) : hasMyRequest ? (
                           <div className={styles.requestStatusValueRow}>
                             <span
-                              className={`${styles.badge} ${statusTone(myRequest?.status)}`}
+                              className={`${styles.badge} ${statusTone(
+                                myRequest?.status,
+                              )}`}
                             >
                               {myRequestLabel}
                             </span>

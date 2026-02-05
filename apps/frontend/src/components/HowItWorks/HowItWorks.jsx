@@ -95,8 +95,10 @@ export default function HowItWorks() {
                 <button
                   key={step.id}
                   onClick={() => changeStep(step.id)}
-                  className={styles.tab}
+                  className={`${styles.tab} ${active === step.id ? styles.tabActive : ""}`}
                   type="button"
+                  role="tab"
+                  aria-selected={active === step.id}
                 >
                   {step.tab}
 

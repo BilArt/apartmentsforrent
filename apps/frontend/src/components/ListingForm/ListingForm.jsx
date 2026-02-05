@@ -47,7 +47,7 @@ export default function ListingForm({
   const initialTitle = initialValue?.title || "";
   const initialCity = useMemo(
     () => toCityAutocompleteValue(initialValue?.city),
-    [initialValue?.city]
+    [initialValue?.city],
   );
   const initialAddress = initialValue?.address || "";
   const initialDescription = initialValue?.description || "";
@@ -155,8 +155,9 @@ export default function ListingForm({
 
         <CityAutocomplete
           value={city}
+          valueMode="object"
           onChange={(v) => {
-            setCity(v);
+            setCity(v ? toCityAutocompleteValue(v) : null);
             clearErrorOnChange();
           }}
           showLabel={false}

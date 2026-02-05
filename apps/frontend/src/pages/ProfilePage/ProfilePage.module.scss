@@ -11,9 +11,10 @@
 
 .h1 {
   margin: 0;
-  font-size: 44px;
-  line-height: 1.05;
-  font-weight: 800;
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 100%;
+  letter-spacing: 0;
   color: var(--color-text-primary);
 }
 
@@ -30,20 +31,28 @@
 }
 
 .stateTitle {
-  font-size: 22px;
-  font-weight: 700;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 100%;
+  letter-spacing: 0;
   color: var(--color-text-primary);
 }
 
 .stateText {
   margin-top: 8px;
-  color: rgba(0, 0, 0, 0.65);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 100%;
+  letter-spacing: 0;
+
+  color: var(--color-secondary);
 }
 
 .stateActions {
   margin-top: 18px;
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .profileCard {
@@ -74,25 +83,34 @@
 .avatar {
   width: 48px;
   height: 48px;
-  border-radius: 999px;
+  border-radius: 30px;
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-white);
+
   display: grid;
   place-items: center;
-  font-weight: 800;
-  font-size: 18px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 100%;
+  letter-spacing: 0;
 }
 
 .name {
-  font-size: 22px;
-  font-weight: 800;
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 100%;
+  letter-spacing: 0;
   color: var(--color-text-primary);
 }
 
 .sub {
   margin-top: 4px;
-  color: rgba(0, 0, 0, 0.6);
-  font-weight: 600;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 100%;
+  letter-spacing: 0;
+
+  color: var(--color-secondary);
 }
 
 .quickActions {
@@ -102,6 +120,7 @@
 
   @media (max-width: 760px) {
     width: 100%;
+    flex-wrap: wrap;
   }
 
   button {
@@ -129,13 +148,20 @@
 }
 
 .metaLabel {
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 100%;
+  letter-spacing: 0;
+
   color: rgba(0, 0, 0, 0.55);
-  font-size: 12px;
 }
 
 .metaValue {
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 100%;
+  letter-spacing: 0;
+
   color: var(--color-text-primary);
   word-break: break-word;
 }
@@ -144,32 +170,40 @@
   margin-top: 14px;
   padding-top: 14px;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
-  color: rgba(0, 0, 0, 0.55);
-  font-size: 12px;
-  line-height: 1.3;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 100%;
+  letter-spacing: 0;
+
+  color: var(--color-secondary);
 }
 
 .primaryBtn,
 .secondaryBtn,
 .ghostBtn {
   height: 44px;
-  border-radius: 999px;
+  border-radius: 30px;
   padding: 0 18px;
   border: 0;
   cursor: pointer;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 100%;
+  letter-spacing: 0;
+
   transition:
-    background-color 180ms ease,
-    color 180ms ease,
-    border-color 180ms ease;
+    background-color 160ms ease,
+    color 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease;
 }
 
 .primaryBtn {
   background: var(--color-primary);
-  color: #fff;
+  color: var(--color-white);
 
   &:hover {
-    background: #ff7377;
+    background: var(--color-primary-hover, #e6455c);
   }
 }
 
@@ -193,4 +227,11 @@
     border-color: rgba(0, 0, 0, 0.28);
     color: rgba(0, 0, 0, 0.9);
   }
+}
+
+.primaryBtn:disabled,
+.secondaryBtn:disabled,
+.ghostBtn:disabled {
+  opacity: 0.55;
+  cursor: default;
 }

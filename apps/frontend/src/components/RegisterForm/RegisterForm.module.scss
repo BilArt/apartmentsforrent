@@ -4,7 +4,16 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  padding: 6px 4px 0;
+  padding: 6px 2px 0;
+
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  color: var(--color-text-primary, #222);
 }
 
 .field {
@@ -13,15 +22,22 @@
     height: 44px;
     padding: 0 16px;
 
-    border-radius: 999px;
+    border-radius: 30px;
     border: 1px solid rgba(0, 0, 0, 0.25);
     outline: none;
 
-    font-size: 14px;
+    font-size: 16px;
+    font-weight: 400;
     color: var(--color-text-primary, #222);
+    background: var(--color-surface, #fff);
+
+    transition:
+      border-color 160ms ease,
+      box-shadow 160ms ease;
 
     &:focus {
       border-color: rgba(0, 0, 0, 0.45);
+      box-shadow: 0 0 0 4px rgba(255, 92, 98, 0.18);
     }
 
     &::placeholder {
@@ -33,6 +49,7 @@
 .error {
   margin: 0;
   font-size: 13px;
+  font-weight: 600;
   color: #e11d48;
 }
 
@@ -40,19 +57,23 @@
   margin-top: 6px;
   height: 44px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 30px;
 
-  background: #ff5a67;
+  background: var(--color-primary, #ff5c62);
   color: #fff;
   font-weight: 600;
+  font-size: 16px;
+
   cursor: pointer;
 
   transition:
     transform 120ms ease,
+    background-color 160ms ease,
     opacity 120ms ease;
 
   &:hover {
     opacity: 0.95;
+    background: #ff7377;
   }
 
   &:active {
@@ -72,20 +93,20 @@
 .tip {
   border: 1px solid rgba(0, 0, 0, 0.08);
   background: rgba(255, 90, 103, 0.06);
-  border-radius: 16px;
+  border-radius: 22px;
   padding: 12px 14px;
 
   strong {
     display: block;
-    font-size: 13px;
-    font-weight: 700;
+    font-size: 16px;
+    font-weight: 600;
     color: rgba(0, 0, 0, 0.75);
-    margin-bottom: 4px;
+    margin-bottom: 6px;
   }
 
   p {
     margin: 0;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.35;
     color: rgba(0, 0, 0, 0.55);
   }
@@ -95,7 +116,7 @@
   position: relative;
   display: grid;
   place-items: center;
-  margin: 2px 0;
+  margin: 4px 0;
 
   &::before {
     content: "";
@@ -111,7 +132,7 @@
   span {
     position: relative;
     padding: 0 10px;
-    background: #fff;
+    background: var(--color-surface, #fff);
     font-size: 12px;
     color: rgba(0, 0, 0, 0.4);
   }
@@ -119,21 +140,35 @@
 
 .bankIdBtn {
   height: 44px;
-  border-radius: 999px;
+  border-radius: 30px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: rgba(255, 90, 103, 0.1);
   cursor: pointer;
-  font-weight: 700;
+  font-weight: 600;
+  font-size: 16px;
 
   transition:
     transform 120ms ease,
-    background 120ms ease;
+    background 120ms ease,
+    border-color 120ms ease;
 
   &:hover {
     background: rgba(255, 90, 103, 0.14);
+    border-color: rgba(0, 0, 0, 0.16);
   }
 
   &:active {
     transform: translateY(1px);
+  }
+}
+
+/* mobile */
+@media (max-width: 520px) {
+  .form {
+    gap: 10px;
+  }
+
+  .tip {
+    padding: 10px 12px;
   }
 }

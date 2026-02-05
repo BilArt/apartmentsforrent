@@ -87,7 +87,6 @@ function parseISODate(value) {
   const d = Number(m[3]);
 
   const dt = new Date(y, mo, d);
-  // доп. проверка на “32-е число”
   if (dt.getFullYear() !== y || dt.getMonth() !== mo || dt.getDate() !== d)
     return null;
 
@@ -169,7 +168,7 @@ export default function ListingsPage({
         if (!alive) return;
 
         const normalized = (Array.isArray(data) ? data : []).map(
-          normalizeListing
+          normalizeListing,
         );
         setItems(normalized);
         setStatus("ok");
@@ -328,7 +327,7 @@ export default function ListingsPage({
         block: "start",
       });
     },
-    [sp, setSp, totalPages]
+    [sp, setSp, totalPages],
   );
 
   const setFavMode = useCallback(
@@ -350,7 +349,7 @@ export default function ListingsPage({
         block: "start",
       });
     },
-    [sp, setSp, canFavorite]
+    [sp, setSp, canFavorite],
   );
 
   const onToggleFav = useCallback(
@@ -358,7 +357,7 @@ export default function ListingsPage({
       if (!canFavorite) return;
       await onToggleFavorite?.(listingId);
     },
-    [canFavorite, onToggleFavorite]
+    [canFavorite, onToggleFavorite],
   );
 
   const pagesToShow = useMemo(() => {
@@ -383,17 +382,13 @@ export default function ListingsPage({
           <SearchPanel />
         </div>
 
-        <div ref={resultsRef}>
-          {status === "loading" && (
-            <div style={{ padding: 12, opacity: 0.7 }}>Завантаження…</div>
-          )}
+        {status === "loading" && (
+          <div className={styles.state}>Завантаження…</div>
+        )}
 
-          {status === "error" && (
-            <div style={{ padding: 12, color: "#b00020" }}>
-              Помилка завантаження: {error}
-            </div>
-          )}
-        </div>
+        {status === "error" && (
+          <div className={styles.stateError}>Помилка завантаження: {error}</div>
+        )}
 
         {status === "ok" && (
           <>
@@ -432,13 +427,13 @@ export default function ListingsPage({
             </div>
 
             {!canFavorite && (
-              <div style={{ padding: "0 0 12px", opacity: 0.7 }}>
+              <div className={styles.state} style={{ padding: "0 0 12px" }}>
                 Увійди, щоб додавати оголошення в обране.
               </div>
             )}
 
             {onlyFav && canFavorite && !hasAnyFavorites && (
-              <div style={{ padding: "0 0 12px", opacity: 0.7 }}>
+              <div className={styles.state} style={{ padding: "0 0 12px" }}>
                 У тебе поки що немає обраних. Натисни ❤️ на оголошенні.
               </div>
             )}

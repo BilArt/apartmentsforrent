@@ -139,7 +139,6 @@ export default function SearchPanel() {
 
   const [form, dispatch] = useReducer(formReducer, sp, readInitial);
 
-  // Sync with URL changes
   useEffect(() => {
     dispatch({ type: "replace", payload: readInitial(sp) });
   }, [sp.toString()]);
