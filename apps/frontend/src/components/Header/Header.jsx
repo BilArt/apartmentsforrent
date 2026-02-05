@@ -202,10 +202,10 @@ export default function Header({
           <div className={styles.burgerWrap} ref={mobileRef}>
             <button
               type="button"
-              className={styles.burgerBtn}
+              className={`${styles.burgerBtn} ${mobileOpen ? styles.burgerBtnOpen : ""}`}
               onClick={toggleMobile}
               aria-expanded={mobileOpen}
-              aria-label="Menu"
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
             >
               <span className={styles.burgerLine} />
               <span className={styles.burgerLine} />
