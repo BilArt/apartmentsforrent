@@ -6,11 +6,16 @@ export default defineConfig({
   plugins: [react(), svgr()],
   server: {
     proxy: {
-      "/auth": "http://localhost:3000",
-      "/listings": "http://localhost:3000",
-      "/health": "http://localhost:3000",
+      "/api": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ""),
+      },
 
-      "/geo": "http://localhost:3000",
+      "/media": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
     },
   },
 });
