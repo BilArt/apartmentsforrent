@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { requestsApi } from "../../api/requests";
-import { authApi } from "../../api/auth";
 import styles from "./RequestsPage.module.scss";
 
 function formatUaDateFromIso(iso) {
@@ -63,17 +62,14 @@ export default function RequestsPage({
 
   const [tab, setTab] = useState(tabFromUrl === "my" ? "my" : "incoming");
 
+  // sync local tab with URL
   useEffect(() => {
     const t = tabFromUrl === "my" ? "my" : "incoming";
     setTab(t);
   }, [tabFromUrl]);
 
-  const [sessionUser, setSessionUser] = useState(null);
-  const [sessionLoading, setSessionLoading] = useState(false);
-
-  const effectiveUser = currentUser || sessionUser;
-  const effectiveAuthLoading = authLoading || sessionLoading;
-  const isAuthed = !effectiveAuthLoading && Boolean(effectiveUser);
+  const isAuthed = !authLoading && Boolean(currentUser);
+  const tabsDisabled = authLoading || !isAuthed;
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -87,9 +83,7 @@ export default function RequestsPage({
   const incomingCount = incoming?.length || 0;
   const myCount = my?.length || 0;
 
-  const tabsDisabled = effectiveAuthLoading || !isAuthed;
-
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     setLoading(true);
     setError("");
 
@@ -111,105 +105,88 @@ export default function RequestsPage({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     if (authLoading) return;
-    if (currentUser) return;
-
-    let alive = true;
-
-    setSessionLoading(true);
-    authApi
-      .me()
-      .then((u) => {
-        if (!alive) return;
-        setSessionUser(u || null);
-      })
-      .catch(() => {
-        if (!alive) return;
-        setSessionUser(null);
-      })
-      .finally(() => {
-        if (!alive) return;
-        setSessionLoading(false);
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, [authLoading, currentUser]);
-
-  useEffect(() => {
-    if (effectiveAuthLoading) return;
     if (!isAuthed) return;
     refresh();
-  }, [effectiveAuthLoading, isAuthed]);
+  }, [authLoading, isAuthed, refresh]);
 
-  const onChangeStatus = async (requestId, newStatus) => {
+  const onChangeStatus = useCallback(async (requestId, newStatus) => {
     if (!requestId) return;
 
-    setUpdatingIds((prev) => new Set(prev).add(requestId));
+    const rid = String(requestId);
+
+    setUpdatingIds((prev) => {
+      const next = new Set(prev);
+      next.add(rid);
+      return next;
+    });
+
     setActionErrors((prev) => {
       const next = { ...prev };
-      delete next[requestId];
+      delete next[rid];
       return next;
     });
 
     try {
-      const updated = await requestsApi.updateStatus(requestId, newStatus);
+      const updated = await requestsApi.updateStatus(rid, newStatus);
 
       window.dispatchEvent(
         new CustomEvent("requestStatusChanged", {
           detail: {
             listingId: String(updated?.listingId),
             status: updated?.status,
-            requestId: String(updated?.id || requestId),
+            requestId: String(updated?.id || rid),
           },
-        })
+        }),
       );
 
       const applyUpdated = (arr) =>
-        arr.map((r) => (r.id === requestId ? updated : r));
+        arr.map((r) => (String(r?.id) === rid ? updated : r));
 
       setIncoming((prev) => applyUpdated(prev));
       setMy((prev) => applyUpdated(prev));
     } catch (e) {
       const msg = e?.message || "Не вдалося оновити статус";
-      setActionErrors((prev) => ({ ...prev, [requestId]: msg }));
+      setActionErrors((prev) => ({ ...prev, [rid]: msg }));
     } finally {
       setUpdatingIds((prev) => {
         const next = new Set(prev);
-        next.delete(requestId);
+        next.delete(rid);
         return next;
       });
     }
-  };
+  }, []);
 
   const rawList = tab === "incoming" ? incoming : my;
 
   const list = useMemo(() => {
     if (!listingIdFromUrl) return rawList;
     return rawList.filter(
-      (r) => String(r?.listingId) === String(listingIdFromUrl)
+      (r) => String(r?.listingId) === String(listingIdFromUrl),
     );
   }, [rawList, listingIdFromUrl]);
 
-  const clearListingFilter = () => {
+  const clearListingFilter = useCallback(() => {
     const next = new URLSearchParams(searchParams);
     next.delete("listingId");
     setSearchParams(next);
-  };
+  }, [searchParams, setSearchParams]);
 
-  const setTabTo = (nextTab) => {
-    const next = new URLSearchParams(searchParams);
-    next.set("tab", nextTab);
-    setSearchParams(next);
-  };
+  const setTabTo = useCallback(
+    (nextTab) => {
+      const next = new URLSearchParams(searchParams);
+      next.set("tab", nextTab);
+      setSearchParams(next);
+    },
+    [searchParams, setSearchParams],
+  );
 
   let content = null;
 
-  if (effectiveAuthLoading) {
+  if (authLoading) {
     content = <div className={styles.state}>Перевіряємо сесію…</div>;
   } else if (!isAuthed) {
     content = (
@@ -293,6 +270,7 @@ export default function RequestsPage({
     content = (
       <div className={styles.list}>
         {list.map((r) => {
+          const rid = String(r?.id);
           const listingTitle = r?.listing?.title || "Оголошення";
           const from = formatUaDateFromIso(r?.from);
           const to = formatUaDateFromIso(r?.to);
@@ -305,17 +283,17 @@ export default function RequestsPage({
 
           const landlordLabel =
             r?.listing?.landlordName || r?.listing?.ownerId || "—";
-          const isUpdating = updatingIds.has(r.id);
+          const isUpdating = updatingIds.has(rid);
 
           const isPending = r.status === "PENDING";
           const isApproved = r.status === "APPROVED";
           const isRejected = r.status === "REJECTED";
           const isCompleted = r.status === "COMPLETED";
 
-          const actionError = actionErrors[r.id];
+          const actionError = actionErrors[rid];
 
           return (
-            <article key={r.id} className={styles.card}>
+            <article key={rid} className={styles.card}>
               <div className={styles.cardTop}>
                 <div className={styles.cardTitleWrap}>
                   <div className={styles.cardTitle}>{listingTitle}</div>
@@ -345,7 +323,7 @@ export default function RequestsPage({
                       <button
                         type="button"
                         className={styles.primaryBtn}
-                        onClick={() => onChangeStatus(r.id, "APPROVED")}
+                        onClick={() => onChangeStatus(rid, "APPROVED")}
                         disabled={isUpdating || !isPending}
                         title={!isPending ? "Доступно тільки для PENDING" : ""}
                       >
@@ -355,7 +333,7 @@ export default function RequestsPage({
                       <button
                         type="button"
                         className={`${styles.ghostBtn} ${styles.dangerBtn}`}
-                        onClick={() => onChangeStatus(r.id, "REJECTED")}
+                        onClick={() => onChangeStatus(rid, "REJECTED")}
                         disabled={isUpdating || !isPending}
                         title={!isPending ? "Доступно тільки для PENDING" : ""}
                       >
@@ -365,7 +343,7 @@ export default function RequestsPage({
                       <button
                         type="button"
                         className={styles.secondaryBtn}
-                        onClick={() => onChangeStatus(r.id, "COMPLETED")}
+                        onClick={() => onChangeStatus(rid, "COMPLETED")}
                         disabled={
                           isUpdating || isRejected || isCompleted || !isApproved
                         }
@@ -400,7 +378,7 @@ export default function RequestsPage({
 
                 <div className={styles.metaItem}>
                   <div className={styles.metaLabel}>ID заявки</div>
-                  <div className={styles.metaValue}>{r.id}</div>
+                  <div className={styles.metaValue}>{rid}</div>
                 </div>
               </div>
 

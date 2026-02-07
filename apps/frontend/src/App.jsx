@@ -18,6 +18,8 @@ import HowItWorksPage from "./pages/HowItWorksPage/HowItWorksPage";
 import BankIdPage from "./pages/BankIdPage/BankIdPage";
 import RatingPage from "./pages/RatingPage/RatingPage";
 import NewListingPage from "./pages/NewListingPage/NewListingPage";
+import ChatPage from "./pages/ChatPage/ChatPage";
+import ChatsPage from "./pages/ChatsPage/ChatsPage";
 
 import Header from "./components/Header/Header";
 import Footer from "./components/Footer/Footer";
@@ -32,6 +34,8 @@ import ViewingRequestForm from "./components/ViewingRequestForm/ViewingRequestFo
 
 import RequireAuth from "./components/RequireAuth/RequireAuth";
 import { useFavorites } from "./hooks/useFavorites";
+
+import FloatingChatsButton from "./components/FloatingChatsButton/FloatingChatsButton";
 
 function App() {
   const navigate = useNavigate();
@@ -294,6 +298,42 @@ function App() {
         />
 
         <Route
+          path="/chats"
+          element={
+            <RequireAuth
+              currentUser={currentUser}
+              authLoading={authLoading}
+              onRequireAuth={() => openSignIn({ from: location })}
+              fallback={
+                <div className="container" style={{ padding: "28px 0" }}>
+                  Перевіряємо сесію…
+                </div>
+              }
+            >
+              <ChatsPage currentUser={currentUser} />
+            </RequireAuth>
+          }
+        />
+
+        <Route
+          path="/chat"
+          element={
+            <RequireAuth
+              currentUser={currentUser}
+              authLoading={authLoading}
+              onRequireAuth={() => openSignIn({ from: location })}
+              fallback={
+                <div className="container" style={{ padding: "28px 0" }}>
+                  Перевіряємо сесію…
+                </div>
+              }
+            >
+              <ChatPage currentUser={currentUser} />
+            </RequireAuth>
+          }
+        />
+
+        <Route
           path="/listings/:listingId"
           element={
             <ListingDetailsPage
@@ -305,6 +345,9 @@ function App() {
       </Routes>
 
       <Footer />
+
+      {/* FAB: чати справа знизу */}
+      <FloatingChatsButton isAuthed={isAuthed} />
 
       {activeModal === "signin" && (
         <Modal title="Увійти" onClose={closeModal}>

@@ -35,13 +35,8 @@ function formatDateOnly(value) {
 function resolveMediaUrl(src) {
   if (!src) return null;
 
-  // absolute keep
   if (/^https?:\/\//i.test(src)) return src;
-
-  // "/media/..." -> API_BASE_URL + "/media/..."
   if (src.startsWith("/")) return `${API_BASE_URL}${src}`;
-
-  // "file.jpg" -> API_BASE_URL + "/media/listings/file.jpg"
   return `${API_BASE_URL}/media/listings/${src}`;
 }
 
@@ -59,7 +54,6 @@ function getImages(listing) {
   const mapped = list.map(pick).filter(Boolean);
   const resolved = mapped.map(resolveMediaUrl).filter(Boolean);
 
-  // если нет реальных фото — возвращаем пусто, UI покажет "Фото нема"
   return resolved;
 }
 
@@ -242,7 +236,7 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
     return () => {
       alive = false;
     };
-  }, [canCheckMyRequest, isOwnListing, item?.id]);
+  }, [canCheckMyRequest, isOwnListing, item?.id, currentUser?.id]);
 
   useEffect(() => {
     if (!item?.id) return;
@@ -286,11 +280,15 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
       if (e.type === "requestCreated") {
         setMyReqStatus("ok");
         setMyReqError("");
+
         setMyRequest((prev) => {
-          if (prev?.listingId && String(prev.listingId) === String(item.id)) {
+          if (prev?.listingId && String(prev.listingId) === String(item.id))
             return prev;
-          }
-          return { listingId: String(item.id), status: d.status || "PENDING" };
+          return {
+            id: d.requestId ? String(d.requestId) : undefined,
+            listingId: String(item.id),
+            status: d.status || "PENDING",
+          };
         });
 
         doRefreshMyRequest();
@@ -300,8 +298,15 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
       if (e.type === "requestStatusChanged") {
         setMyReqStatus("ok");
         setMyReqError("");
+
         setMyRequest((prev) => {
-          if (!prev) return { listingId: String(item.id), status: d.status };
+          if (!prev) {
+            return {
+              listingId: String(item.id),
+              status: d.status,
+              id: d.requestId ? String(d.requestId) : undefined,
+            };
+          }
           if (String(prev.listingId) !== String(item.id)) return prev;
           return { ...prev, status: d.status };
         });
@@ -322,6 +327,7 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
   const hasMyRequest =
     Boolean(myRequest?.listingId) &&
     String(myRequest.listingId) === String(item?.id);
+
   const myRequestLabel = hasMyRequest ? statusLabel(myRequest.status) : null;
 
   const goToRequests = () => {
@@ -329,6 +335,13 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
     navigate(
       `/requests?tab=my&listingId=${encodeURIComponent(String(item.id))}`,
     );
+  };
+
+  const openChat = () => {
+    if (!item?.id) return;
+    navigate(`/chat?listingId=${encodeURIComponent(String(item.id))}`, {
+      state: { from: location },
+    });
   };
 
   const onMainImgError = () => setImageBroken(true);
@@ -356,7 +369,6 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
 
         {status === "ok" && item && (
           <div className={styles.layout}>
-            {/* LEFT: photo + actions */}
             <div className={styles.left}>
               <div className={styles.galleryCard}>
                 <div className={styles.galleryMain}>
@@ -379,7 +391,7 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
                     aria-label="Photos"
                   >
                     {images.slice(0, 6).map((src, idx) => {
-                      const isActive = idx === activeImg;
+                      const isActive = idx === safeActive;
                       return (
                         <button
                           key={`${src}-${idx}`}
@@ -404,9 +416,20 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
               <div className={styles.sideCard}>
                 <div className={styles.sideTitle}>Швидкі дії</div>
 
-                <button type="button" className={styles.primaryBtn} disabled>
-                  Написати орендодавцю
-                </button>
+                {!isOwnListing ? (
+                  <button
+                    type="button"
+                    className={styles.primaryBtn}
+                    onClick={openChat}
+                    disabled={!item?.id}
+                  >
+                    Написати орендодавцю
+                  </button>
+                ) : (
+                  <button type="button" className={styles.primaryBtn} disabled>
+                    Це ваше оголошення
+                  </button>
+                )}
 
                 {!isOwnListing ? (
                   <>
@@ -427,9 +450,7 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
                         ) : hasMyRequest ? (
                           <div className={styles.requestStatusValueRow}>
                             <span
-                              className={`${styles.badge} ${statusTone(
-                                myRequest?.status,
-                              )}`}
+                              className={`${styles.badge} ${statusTone(myRequest?.status)}`}
                             >
                               {myRequestLabel}
                             </span>
@@ -466,13 +487,12 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
                     )}
 
                     <div className={styles.sideNote}>
-                      (Чат підключимо пізніше. Зараз головне — заявка і статус.)
+                      (Чат — MVP. Поки що базова переписка, без “космоса”.)
                     </div>
                   </>
                 ) : (
                   <div className={styles.sideNote}>
-                    Це ваше оголошення — ви не можете надсилати запит на
-                    перегляд самому собі.
+                    Це ваше оголошення — ви не можете писати самому собі.
                   </div>
                 )}
               </div>
@@ -487,7 +507,6 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
               </div>
             </div>
 
-            {/* RIGHT: content */}
             <div className={styles.right}>
               <div className={styles.mainCard}>
                 <div className={styles.headerRow}>

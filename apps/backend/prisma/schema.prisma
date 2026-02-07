@@ -43,8 +43,12 @@ model User {
   // Contracts
   contractsOwner  Contract[] @relation("ContractsOwner")
   contractsTenant Contract[] @relation("ContractsTenant")
-}
 
+  // Chat
+  chatThreadsOwner  ChatThread[]  @relation("ChatThreadsOwner")
+  chatThreadsTenant ChatThread[]  @relation("ChatThreadsTenant")
+  chatMessages      ChatMessage[] @relation("ChatMessagesAuthor")
+}
 
 model Listing {
   id String @id @default(cuid())
@@ -85,6 +89,9 @@ model Listing {
   // Requests / Contracts
   requests  BookingRequest[]
   contracts Contract[]
+
+  // Chat
+  chatThreads ChatThread[]
 }
 
 model Favorite {
@@ -148,4 +155,44 @@ model Contract {
   @@index([listingId])
   @@index([ownerId])
   @@index([tenantId])
+}
+
+/**
+ * Chat: one thread per (listing + tenant).
+ * Owner определяется через listing.ownerId.
+ */
+model ChatThread {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  listingId String
+  ownerId   String
+  tenantId  String
+
+  listing Listing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  owner   User    @relation("ChatThreadsOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  tenant  User    @relation("ChatThreadsTenant", fields: [tenantId], references: [id], onDelete: Cascade)
+
+  messages ChatMessage[]
+
+  @@unique([listingId, tenantId])
+  @@index([listingId])
+  @@index([ownerId])
+  @@index([tenantId])
+}
+
+model ChatMessage {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  threadId String
+  authorId String
+  text     String
+
+  thread ChatThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  author User       @relation("ChatMessagesAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([threadId, createdAt])
+  @@index([authorId])
 }

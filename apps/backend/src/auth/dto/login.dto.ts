@@ -1,4 +1,10 @@
-import { IsOptional, IsString, MinLength, Matches } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+  ValidateIf,
+} from 'class-validator';
 
 export class LoginDto {
   @IsOptional()
@@ -6,13 +12,15 @@ export class LoginDto {
   @MinLength(1)
   bankId?: string;
 
-  @IsOptional()
+  @ValidateIf((o: LoginDto) => !o.bankId)
   @IsString()
-  @Matches(/^\+380\d{9}$/, { message: 'phone must be in format +380XXXXXXXXX' })
+  @MinLength(1)
+  @IsNotEmpty()
   phone?: string;
 
-  @IsOptional()
+  @ValidateIf((o: LoginDto) => !o.bankId)
   @IsString()
-  @MinLength(4)
+  @MinLength(1)
+  @IsNotEmpty()
   password?: string;
 }
