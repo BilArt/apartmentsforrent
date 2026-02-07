@@ -4,6 +4,9 @@ import { authApi } from "../../api/auth";
 
 const UA_PREFIX = "+380";
 const UA_PREFIX_DIGITS = "380";
+const UA_LOCAL_LEN = 9;
+const UA_FULL_DIGITS_LEN = UA_PREFIX_DIGITS.length + UA_LOCAL_LEN;
+const UA_MAX_LEN = 1 + UA_FULL_DIGITS_LEN;
 
 const NAME_ALLOWED_RE = /^[\p{L}]+(?:[ '\-’][\p{L}]+)*$/u;
 
@@ -23,19 +26,45 @@ function normalizeUaPhone(input) {
   if (!d) return UA_PREFIX;
 
   if (d.startsWith("0") && d.length === 10) {
-    return UA_PREFIX + d.slice(1);
+    const local = d.slice(1);
+    return UA_PREFIX + local.slice(0, UA_LOCAL_LEN);
   }
 
   if (d.startsWith(UA_PREFIX_DIGITS)) {
-    const rest = d.slice(3);
-    return UA_PREFIX + rest;
+    const rest = d.slice(UA_PREFIX_DIGITS.length);
+    return UA_PREFIX + rest.slice(0, UA_LOCAL_LEN);
   }
 
-  if (d.length === 9) {
+  if (d.length === UA_LOCAL_LEN) {
     return UA_PREFIX + d;
   }
 
-  return "+" + d;
+  if (d.length > UA_LOCAL_LEN) {
+    const tail = d.slice(-UA_LOCAL_LEN);
+    return UA_PREFIX + tail;
+  }
+
+  return UA_PREFIX + d.slice(0, UA_LOCAL_LEN);
+}
+
+function sanitizeUaPhoneInput(raw) {
+  const cleaned = String(raw || "").replace(/[^\d+]/g, "");
+
+  let digits = digitsOnly(cleaned);
+
+  if (!digits) return UA_PREFIX;
+
+  if (digits.startsWith("0")) {
+    digits = digits.slice(1);
+  }
+
+  if (digits.startsWith(UA_PREFIX_DIGITS)) {
+    digits = digits.slice(UA_PREFIX_DIGITS.length);
+  }
+
+  const local = digits.slice(0, UA_LOCAL_LEN);
+
+  return UA_PREFIX + local;
 }
 
 function isValidUaPhone(normalized) {
@@ -109,15 +138,8 @@ function RegisterForm({ onRegistered, onGoSignIn, onBankId }) {
   };
 
   const onPhoneChange = (e) => {
-    const raw = e.target.value;
-    const safe = raw.replace(/[^\d+()\-\s]/g, "");
-
-    if (!safe.startsWith(UA_PREFIX)) {
-      const d = digitsOnly(safe);
-      setPhone(d ? normalizeUaPhone(d) : UA_PREFIX);
-    } else {
-      setPhone(safe);
-    }
+    const next = sanitizeUaPhoneInput(e.target.value);
+    setPhone(next);
 
     setFormErrors((p) => ({ ...p, phone: undefined }));
     setError(null);
@@ -158,7 +180,7 @@ function RegisterForm({ onRegistered, onGoSignIn, onBankId }) {
         lastName: trimmedLast,
         phone: normalizedPhone,
         bankId: `manual:${normalizedPhone}`,
-        password, // <-- ВАЖНО: теперь manual регистрация проходит
+        password,
       };
 
       const user = await authApi.register(payload);
@@ -249,6 +271,7 @@ function RegisterForm({ onRegistered, onGoSignIn, onBankId }) {
           onBlur={handlePhoneBlur}
           autoComplete="tel"
           inputMode="numeric"
+          maxLength={UA_MAX_LEN}
           aria-invalid={!!formErrors.phone}
         />
         {formErrors.phone && (

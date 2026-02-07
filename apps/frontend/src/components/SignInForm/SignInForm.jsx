@@ -3,6 +3,10 @@ import styles from "./SignInForm.module.scss";
 import { authApi } from "../../api/auth";
 
 const UA_PREFIX = "+380";
+const UA_PREFIX_DIGITS = "380";
+const UA_LOCAL_LEN = 9;
+const UA_FULL_DIGITS_LEN = UA_PREFIX_DIGITS.length + UA_LOCAL_LEN; // 12
+const UA_MAX_LEN = 1 + UA_FULL_DIGITS_LEN; // 13
 const UA_PHONE_RE = /^\+380\d{9}$/;
 
 function digitsOnly(v) {
@@ -15,18 +19,38 @@ function normalizeUaPhone(value) {
   if (!d) return UA_PREFIX;
 
   if (d.startsWith("0") && d.length === 10) {
-    return "+380" + d.slice(1);
+    const local = d.slice(1);
+    return "+380" + local.slice(0, UA_LOCAL_LEN);
   }
 
   if (d.startsWith("380")) {
-    return "+380" + d.slice(3);
+    const rest = d.slice(3);
+    return "+380" + rest.slice(0, UA_LOCAL_LEN);
   }
 
   if (d.length === 9) {
     return "+380" + d;
   }
 
-  return "+" + d;
+  if (d.length > UA_LOCAL_LEN) {
+    const tail = d.slice(-UA_LOCAL_LEN);
+    return "+380" + tail;
+  }
+
+  return "+380" + d.slice(0, UA_LOCAL_LEN);
+}
+
+function sanitizeUaPhoneInput(raw) {
+  const cleaned = String(raw || "").replace(/[^\d+]/g, "");
+  let digits = digitsOnly(cleaned);
+
+  if (!digits) return UA_PREFIX;
+
+  if (digits.startsWith("0")) digits = digits.slice(1);
+  if (digits.startsWith(UA_PREFIX_DIGITS)) digits = digits.slice(3);
+
+  const local = digits.slice(0, UA_LOCAL_LEN);
+  return UA_PREFIX + local;
 }
 
 function SignInForm({ onSignedIn, onGoSignUp, onBankId }) {
@@ -86,23 +110,13 @@ function SignInForm({ onSignedIn, onGoSignUp, onBankId }) {
         <span>або</span>
       </div>
 
-      {/* Телефон */}
       <label className={styles.field}>
         <input
           type="tel"
           placeholder="+380XXXXXXXXX"
           value={phone}
           onChange={(e) => {
-            const raw = e.target.value;
-            const safe = raw.replace(/[^\d+()\-\s]/g, "");
-
-            if (!safe.startsWith(UA_PREFIX)) {
-              const normalized = normalizeUaPhone(safe);
-              setPhone(normalized || UA_PREFIX);
-            } else {
-              setPhone(safe);
-            }
-
+            setPhone(sanitizeUaPhoneInput(e.target.value));
             setError(null);
           }}
           onBlur={() => {
@@ -111,10 +125,10 @@ function SignInForm({ onSignedIn, onGoSignUp, onBankId }) {
           }}
           autoComplete="tel"
           inputMode="numeric"
+          maxLength={UA_MAX_LEN}
         />
       </label>
 
-      {/* Пароль */}
       <label className={styles.field}>
         <input
           type="password"

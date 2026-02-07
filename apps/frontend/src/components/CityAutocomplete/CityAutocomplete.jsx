@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import styles from "./CityAutocomplete.module.scss";
-
-const API_BASE = import.meta.env.VITE_API_URL || "";
+import { API_BASE_URL } from "../../api/config";
 
 function displayName(s) {
   return s?.nameUk || s?.name || "";
@@ -12,11 +11,11 @@ function cx(...parts) {
 }
 
 function buildUrl(q, limit) {
-  const base = API_BASE ? API_BASE.replace(/\/$/, "") : "";
-  const url = new URL(`${base}/geo/ua/settlements`, window.location.origin);
-  url.searchParams.set("q", q);
-  url.searchParams.set("limit", String(limit));
-  return url.toString();
+  const base = String(API_BASE_URL || "").replace(/\/$/, "");
+  const url = `${base}/geo/ua/settlements?q=${encodeURIComponent(q)}&limit=${encodeURIComponent(
+    String(limit),
+  )}`;
+  return url;
 }
 
 function valueToLabel(value, valueMode) {
@@ -63,6 +62,11 @@ export default function CityAutocomplete({
     return () => document.removeEventListener("mousedown", onDocClick);
   }, []);
 
+  const currentLabel = useMemo(
+    () => valueToLabel(value, valueMode).trim(),
+    [value, valueMode],
+  );
+
   useEffect(() => {
     const q = query.trim();
 
@@ -81,7 +85,6 @@ export default function CityAutocomplete({
       return;
     }
 
-    const currentLabel = valueToLabel(value, valueMode).trim();
     if (currentLabel && currentLabel.toLowerCase() === q.toLowerCase()) {
       setResults([]);
       setErr(null);
@@ -109,10 +112,12 @@ export default function CityAutocomplete({
       try {
         const res = await fetch(buildUrl(q, limit), {
           signal: controller.signal,
-          credentials: "include",
         });
 
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        if (!res.ok) {
+          const text = await res.text().catch(() => "");
+          throw new Error(`HTTP ${res.status}${text ? `: ${text}` : ""}`);
+        }
 
         const data = await res.json();
         const arr = Array.isArray(data) ? data : [];
@@ -130,7 +135,7 @@ export default function CityAutocomplete({
     }, 250);
 
     return () => clearTimeout(t);
-  }, [query, limit, onChange, value, valueMode]);
+  }, [query, limit, onChange, value, valueMode, currentLabel]);
 
   const handlePick = (s) => {
     const name = displayName(s) || "";
@@ -152,7 +157,6 @@ export default function CityAutocomplete({
     const q = query.trim();
     if (!q) return;
 
-    const currentLabel = valueToLabel(value, valueMode).trim();
     if (currentLabel && currentLabel.toLowerCase() !== q.toLowerCase()) {
       setQuery(currentLabel);
     }

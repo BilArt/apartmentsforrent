@@ -41,43 +41,61 @@ function emitRequestCreated(listingId) {
   window.dispatchEvent(new CustomEvent("requestStatusChanged", { detail }));
 }
 
-const TG_RE = /^@[a-zA-Z0-9_]{5,32}$/;
+const UA_PREFIX = "+380";
 const UA_PHONE_RE = /^\+380\d{9}$/;
 
-function normalizeContact(raw) {
-  const s = String(raw ?? "").trim();
-
-  if (s.startsWith("@")) return s.replace(/[^@a-zA-Z0-9_]/g, "");
-
-  let out = s.replace(/[^\d+]/g, "");
-
-  if (out.startsWith("380")) out = `+${out}`;
-
-  return out;
+function digitsOnly(v) {
+  return String(v ?? "").replace(/\D+/g, "");
 }
 
-function validateContact(raw) {
-  const v = normalizeContact(raw);
-  const ok = TG_RE.test(v) || UA_PHONE_RE.test(v);
+function normalizeUaPhone(input) {
+  const d = digitsOnly(input);
 
-  if (!ok) {
+  if (!d) return UA_PREFIX;
+
+  if (d.startsWith("0") && d.length >= 10) {
+    return UA_PREFIX + d.slice(1, 10);
+  }
+
+  if (d.startsWith("380")) {
+    return UA_PREFIX + d.slice(3, 12);
+  }
+
+  if (d.length >= 9) {
+    return UA_PREFIX + d.slice(0, 9);
+  }
+
+  return UA_PREFIX + d;
+}
+
+function clampUaPhone(input) {
+  const normalized = normalizeUaPhone(input);
+  return normalized.slice(0, 13);
+}
+
+function validatePhone(raw) {
+  const value = clampUaPhone(raw);
+
+  if (!value || value === UA_PREFIX) {
+    return { ok: false, value, message: "Вкажи номер телефону." };
+  }
+
+  if (!UA_PHONE_RE.test(value)) {
     return {
       ok: false,
-      value: v,
-      message:
-        "Контакт має бути або Telegram (@username), або телефон у форматі +380XXXXXXXXX.",
+      value,
+      message: "Телефон має бути у форматі +380XXXXXXXXX (Україна).",
     };
   }
 
-  return { ok: true, value: v, message: "" };
+  return { ok: true, value, message: "" };
 }
 
 export default function ViewingRequestForm({ listingId, onCancel, onSuccess }) {
   const [open, setOpen] = useState(false);
   const calWrapRef = useRef(null);
 
-  const [name, setName] = useState("");
-  const [contact, setContact] = useState("");
+  const [contact, setContact] = useState(UA_PREFIX);
   const [date, setDate] = useState(null);
   const [comment, setComment] = useState("");
 
@@ -104,16 +122,15 @@ export default function ViewingRequestForm({ listingId, onCancel, onSuccess }) {
 
   const submit = async (e) => {
     e.preventDefault();
-
     setError("");
 
-    const cleanName = name.trim();
     const cleanComment = comment.trim();
 
-    if (!cleanName) return setError("Вкажи ім'я.");
-
-    const contactCheck = validateContact(contact);
-    if (!contactCheck.ok) return setError(contactCheck.message);
+    const phoneCheck = validatePhone(contact);
+    if (!phoneCheck.ok) {
+      setContact(phoneCheck.value);
+      return setError(phoneCheck.message);
+    }
 
     if (!date) return setError("Обери дату.");
 
@@ -122,8 +139,7 @@ export default function ViewingRequestForm({ listingId, onCancel, onSuccess }) {
     const payload = {
       from: iso,
       to: iso,
-      message: `Ім'я: ${cleanName}
-Контакт: ${contactCheck.value}${
+      message: `Контакт: ${phoneCheck.value}${
         cleanComment ? `\n\nКоментар:\n${cleanComment}` : ""
       }`,
     };
@@ -144,58 +160,46 @@ export default function ViewingRequestForm({ listingId, onCancel, onSuccess }) {
   };
 
   const onContactChange = (e) => {
-    setContact(e.target.value);
+    const next = clampUaPhone(e.target.value);
+
+    if (!next.startsWith(UA_PREFIX)) {
+      setContact(UA_PREFIX);
+    } else {
+      setContact(next);
+    }
+
+    if (error) setError("");
   };
 
   const onContactBlur = () => {
-    const normalized = normalizeContact(contact);
-    if (normalized !== contact) setContact(normalized);
+    const normalized = clampUaPhone(contact);
+    setContact(normalized || UA_PREFIX);
+
+    const check = validatePhone(normalized);
+    if (!check.ok) setError(check.message);
   };
 
   return (
     <form className={styles.form} onSubmit={submit}>
-
       {error ? <div className={styles.error}>{error}</div> : null}
 
       <div className={styles.field}>
-        <label className={styles.label}>Ім'я</label>
-        <div className={styles.control}>
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Напр. Артем"
-            autoComplete="name"
-          />
-          {name && (
-            <button
-              type="button"
-              className={styles.clearBtn}
-              onClick={() => setName("")}
-              aria-label="Clear name"
-            >
-              <ClearIcon />
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className={styles.field}>
-        <label className={styles.label}>Контакт (телефон / Telegram)</label>
+        <label className={styles.label}>Номер телефону</label>
         <div className={styles.control}>
           <input
             value={contact}
             onChange={onContactChange}
             onBlur={onContactBlur}
-            placeholder="+380XXXXXXXXX або @username"
+            placeholder="+380XXXXXXXXX"
             autoComplete="tel"
-            inputMode="text"
+            inputMode="tel"
           />
-          {contact && (
+          {contact && contact !== UA_PREFIX && (
             <button
               type="button"
               className={styles.clearBtn}
-              onClick={() => setContact("")}
-              aria-label="Clear contact"
+              onClick={() => setContact(UA_PREFIX)}
+              aria-label="Clear phone"
             >
               <ClearIcon />
             </button>
@@ -261,8 +265,6 @@ export default function ViewingRequestForm({ listingId, onCancel, onSuccess }) {
           {status === "loading" ? "Надсилаю..." : "Надіслати запит"}
         </button>
       </div>
-
-      {/* ✅ Убрали MVP-note */}
     </form>
   );
 }
