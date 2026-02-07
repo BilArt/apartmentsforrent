@@ -297,7 +297,7 @@ export default function MyListingsPage({
           <div className={styles.state}>
             <div className={styles.stateTitle}>Поки що порожньо</div>
             <div className={styles.stateText}>
-              Ти ще не створював оголошення. Натисни “Додати об’єкт” у хедері.
+              Ти ще не створював оголошення. Натисни “Додати об’єкт”.
             </div>
           </div>
         )}

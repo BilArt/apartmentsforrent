@@ -24,11 +24,20 @@
   border-color: rgba(0, 0, 0, 0.08);
 }
 
+/* ✅ фиксируем высоту медиа, чтобы все карточки были одинаковые */
 .media {
   position: relative;
-  aspect-ratio: 16 / 9;
   background: rgba(0, 0, 0, 0.04);
   flex: 0 0 auto;
+
+  height: 190px;
+  overflow: hidden;
+}
+
+@media (min-width: 1100px) {
+  .media {
+    height: 200px;
+  }
 }
 
 .cover {
@@ -36,6 +45,121 @@
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* ✅ No photo placeholder */
+.noPhoto {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  place-items: center;
+
+  font-family:
+    "Inter",
+    system-ui,
+    -apple-system,
+    sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0;
+
+  color: rgba(0, 0, 0, 0.45);
+  background: rgba(0, 0, 0, 0.03);
+}
+
+/* ✅ Carousel controls */
+.navBtn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+
+  width: 36px;
+  height: 36px;
+  border-radius: 30px;
+  border: 0;
+  cursor: pointer;
+
+  display: grid;
+  place-items: center;
+
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(6px);
+  color: rgba(0, 0, 0, 0.65);
+
+  font-size: 22px;
+  line-height: 1;
+
+  transition:
+    background 150ms ease,
+    transform 120ms ease,
+    opacity 150ms ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.95);
+    transform: translateY(-50%) scale(1.03);
+  }
+
+  &:active {
+    transform: translateY(-50%) scale(0.98);
+  }
+}
+
+.navPrev {
+  left: 10px;
+}
+
+.navNext {
+  right: 10px;
+}
+
+.dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 10px;
+
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+
+  padding: 0 10px;
+
+  &:before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -10px;
+    height: 52px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.28), transparent);
+    pointer-events: none;
+  }
+}
+
+.dot {
+  position: relative;
+  z-index: 1;
+
+  width: 8px;
+  height: 8px;
+  border-radius: 30px;
+  border: 0;
+  cursor: pointer;
+
+  background: rgba(255, 255, 255, 0.65);
+  transition:
+    transform 120ms ease,
+    background 120ms ease;
+
+  &:hover {
+    transform: scale(1.15);
+    background: rgba(255, 255, 255, 0.9);
+  }
+}
+
+.dotActive {
+  background: rgba(255, 255, 255, 0.95);
+  transform: scale(1.15);
 }
 
 .body {
@@ -170,18 +294,6 @@
   text-overflow: ellipsis;
 }
 
-.address {
-  font-size: 13px;
-  color: var(--color-secondary, rgba(0, 0, 0, 0.55));
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-
-  min-height: 18px;
-  margin-top: auto;
-  padding-top: 12px;
-}
-
 .favBtn {
   width: 36px;
   height: 36px;
@@ -254,6 +366,10 @@
 
 /* Mobile */
 @media (max-width: 520px) {
+  .media {
+    height: 170px;
+  }
+
   .title {
     font-size: 16px;
   }
@@ -272,6 +388,11 @@
   }
 
   .favBtn {
+    width: 34px;
+    height: 34px;
+  }
+
+  .navBtn {
     width: 34px;
     height: 34px;
   }

@@ -5,19 +5,21 @@ function safeProvider(v) {
   return v === "privat" ? "privat" : "mono";
 }
 
-function buildStartUrl(provider, returnTo) {
+function modeToIntent(mode) {
+  return mode === "register" ? "signup" : "signin";
+}
+
+function buildStartUrl(provider, returnTo, intent) {
   const base = "";
 
   const p = safeProvider(provider);
   const rt = encodeURIComponent(returnTo || window.location.href);
+  const it = encodeURIComponent(intent);
 
-  return `${base}/auth/bankid/start?provider=${p}&returnTo=${rt}`;
+  return `${base}/auth/bankid/start?provider=${p}&intent=${it}&returnTo=${rt}`;
 }
 
-export default function BankIdModal({
-  mode = "signin",
-  onCancel,
-}) {
+export default function BankIdModal({ mode = "signin", onCancel }) {
   const [provider, setProvider] = useState("mono");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -38,10 +40,11 @@ export default function BankIdModal({
       setError(null);
 
       const returnTo = window.location.href;
+      const intent = modeToIntent(mode);
 
       onCancel?.();
 
-      window.location.href = buildStartUrl(provider, returnTo);
+      window.location.href = buildStartUrl(provider, returnTo, intent);
     } catch (e) {
       setLoading(false);
       setError(e?.message || "Не вдалося запустити BankID");
@@ -56,7 +59,9 @@ export default function BankIdModal({
       <div className={styles.banks}>
         <button
           type="button"
-          className={`${styles.bankCard} ${provider === "mono" ? styles.active : ""}`}
+          className={`${styles.bankCard} ${
+            provider === "mono" ? styles.active : ""
+          }`}
           onClick={() => setProvider("mono")}
           disabled={loading}
         >
@@ -65,7 +70,9 @@ export default function BankIdModal({
 
         <button
           type="button"
-          className={`${styles.bankCard} ${provider === "privat" ? styles.active : ""}`}
+          className={`${styles.bankCard} ${
+            provider === "privat" ? styles.active : ""
+          }`}
           onClick={() => setProvider("privat")}
           disabled={loading}
         >

@@ -7,5 +7,7 @@ declare module 'express-session' {
     bankIdState?: string;
     bankIdNonce?: string;
     bankIdReturnTo?: string;
+
+    bankIdIntent?: 'signin' | 'signup';
   }
 }

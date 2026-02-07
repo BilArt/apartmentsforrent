@@ -90,6 +90,18 @@
   }
 }
 
+.hint {
+  padding-left: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.45);
+
+  b {
+    color: rgba(0, 0, 0, 0.62);
+    font-weight: 700;
+  }
+}
+
 .selectBox {
   position: relative;
 }
@@ -249,13 +261,6 @@
     cursor: default;
     transform: none;
   }
-}
-
-.note {
-  margin-top: 12px;
-  color: rgba(0, 0, 0, 0.45);
-  font-weight: 600;
-  font-size: 14px;
 }
 
 /* Mobile */

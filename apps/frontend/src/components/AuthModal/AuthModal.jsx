@@ -5,13 +5,22 @@ import styles from "./AuthModal.module.scss";
 import SignInForm from "../SignInForm/SignInForm";
 import RegisterForm from "../RegisterForm/RegisterForm";
 
-function buildBankIdStartUrl(provider, returnTo) {
+function safeProvider(v) {
+  return v === "privat" ? "privat" : "mono";
+}
+
+function safeIntent(v) {
+  return v === "signup" ? "signup" : "signin";
+}
+
+function buildBankIdStartUrl(provider, returnTo, intent) {
   const base = "";
 
-  const p = provider === "privat" ? "privat" : "mono";
-  const rt = encodeURIComponent(returnTo);
+  const p = safeProvider(provider);
+  const rt = encodeURIComponent(returnTo || window.location.href);
+  const it = encodeURIComponent(safeIntent(intent));
 
-  return `${base}/auth/bankid/start?provider=${p}&returnTo=${rt}`;
+  return `${base}/auth/bankid/start?provider=${p}&intent=${it}&returnTo=${rt}`;
 }
 
 export default function AuthModal({ isOpen, onClose, onSuccess, initialMode }) {
@@ -34,10 +43,11 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode }) {
 
   const onBankId = () => {
     const returnTo = window.location.href;
+    const intent = mode === "signup" ? "signup" : "signin";
 
     onClose?.();
 
-    window.location.href = buildBankIdStartUrl(provider, returnTo);
+    window.location.href = buildBankIdStartUrl(provider, returnTo, intent);
   };
 
   return (
@@ -47,14 +57,18 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode }) {
           <div className={styles.tabs}>
             <button
               type="button"
-              className={`${styles.tab} ${mode === "signin" ? styles.tabActive : ""}`}
+              className={`${styles.tab} ${
+                mode === "signin" ? styles.tabActive : ""
+              }`}
               onClick={() => setMode("signin")}
             >
               Увійти
             </button>
             <button
               type="button"
-              className={`${styles.tab} ${mode === "signup" ? styles.tabActive : ""}`}
+              className={`${styles.tab} ${
+                mode === "signup" ? styles.tabActive : ""
+              }`}
               onClick={() => setMode("signup")}
             >
               Реєстрація
@@ -64,14 +78,18 @@ export default function AuthModal({ isOpen, onClose, onSuccess, initialMode }) {
           <div className={styles.provider}>
             <button
               type="button"
-              className={`${styles.providerBtn} ${provider === "mono" ? styles.providerActive : ""}`}
+              className={`${styles.providerBtn} ${
+                provider === "mono" ? styles.providerActive : ""
+              }`}
               onClick={() => setProvider("mono")}
             >
               mono
             </button>
             <button
               type="button"
-              className={`${styles.providerBtn} ${provider === "privat" ? styles.providerActive : ""}`}
+              className={`${styles.providerBtn} ${
+                provider === "privat" ? styles.providerActive : ""
+              }`}
               onClick={() => setProvider("privat")}
             >
               Privat

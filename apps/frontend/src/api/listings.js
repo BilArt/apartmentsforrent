@@ -20,6 +20,24 @@ async function request(path, options = {}) {
   return data;
 }
 
+async function requestFormData(path, formData, options = {}) {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+    ...options,
+  });
+
+  const data = await res.json().catch(() => null);
+
+  if (!res.ok) {
+    const message = data?.message || `Request failed: ${res.status}`;
+    throw new Error(Array.isArray(message) ? message.join(", ") : message);
+  }
+
+  return data;
+}
+
 export const listingsApi = {
   getAll(cityId) {
     const qs = cityId ? `?cityId=${encodeURIComponent(String(cityId))}` : "";
@@ -54,5 +72,11 @@ export const listingsApi = {
     return request(`/listings/${encodeURIComponent(String(id))}`, {
       method: "DELETE",
     });
+  },
+
+  async uploadListingImages(files) {
+    const fd = new FormData();
+    Array.from(files).forEach((f) => fd.append("files", f));
+    return requestFormData("/media/listings", fd);
   },
 };

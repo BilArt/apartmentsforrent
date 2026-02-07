@@ -7,8 +7,9 @@ import { AuthModule } from './auth/auth.module';
 import { FavoritesModule } from './favorites/favorites.module';
 import { ListingsModule } from './listings/listings.module';
 import { RequestsModule } from './requests/requests.module';
-
 import { GeoModule } from './geo/geo.module';
+
+import { MediaModule } from './media/media.module';
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { GeoModule } from './geo/geo.module';
     FavoritesModule,
     RequestsModule,
     GeoModule,
+    MediaModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -4,12 +4,12 @@ import session from 'express-session';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
+import * as path from 'node:path';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.use(express.urlencoded({ extended: true }));
-
   app.use(express.json());
 
   app.enableCors({
@@ -36,6 +36,9 @@ async function bootstrap() {
       },
     }),
   );
+
+  const publicDir = path.resolve(__dirname, '..', 'public');
+  app.use('/media', express.static(path.join(publicDir, 'media')));
 
   app.useGlobalPipes(
     new ValidationPipe({

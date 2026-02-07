@@ -1,4 +1,3 @@
-// src/pages/RequestsPage/RequestsPage.jsx
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { requestsApi } from "../../api/requests";

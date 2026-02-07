@@ -1,8 +1,9 @@
-import { useMemo } from "react";
+import { useMemo, useRef, useState } from "react";
 import styles from "./ListingCard.module.scss";
 import { Link, useLocation } from "react-router-dom";
 
 import FavoriteIcon from "../../assets/svg/favorite.svg?react";
+import { API_BASE_URL } from "../../api/config";
 
 function getCityLabel(city) {
   if (typeof city === "string") {
@@ -21,7 +22,6 @@ function getCityLabel(city) {
 function stripCityFromAddress(address, cityLabel) {
   if (!address || !cityLabel) return address || "";
 
-  // убираем ", Київ" / "Київ" / ", Kyiv" и т.п.
   const escapedCity = cityLabel.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const re = new RegExp(`,?\\s*${escapedCity}$`, "i");
 
@@ -61,30 +61,56 @@ function formatDateOnly(value) {
   return d.toISOString().slice(0, 10);
 }
 
-function getCoverImage(listing) {
+function pickImages(listing) {
   const imgs = listing?.images;
   const list = Array.isArray(imgs) ? imgs : [];
 
   const pick = (val) => {
     if (!val) return null;
     if (typeof val === "string") return val;
-    if (typeof val === "object" && val.url) return val.url;
+    if (typeof val === "object" && typeof val.url === "string") return val.url;
     return null;
   };
 
-  const first = list.length ? pick(list[0]) : null;
+  return list.map(pick).filter(Boolean);
+}
 
-  const resolveSrc = (src) => {
-    if (!src) return null;
-    if (/^https?:\/\//i.test(src)) return src;
-    if (src.startsWith("/")) return src;
-    return `/media/listings/${src}`;
+function resolveImgSrc(src) {
+  if (!src) return null;
+
+  if (/^https?:\/\//i.test(src)) return src;
+
+  if (src.startsWith("/")) return `${API_BASE_URL}${src}`;
+
+  return `${API_BASE_URL}/media/listings/${src}`;
+}
+
+function useCarousel(images) {
+  const [idx, setIdx] = useState(0);
+
+  const hasMany = (images?.length || 0) > 1;
+
+  const prev = (e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    if (!images?.length) return;
+    setIdx((v) => (v - 1 + images.length) % images.length);
   };
 
-  const resolved = resolveSrc(first);
-  if (resolved) return resolved;
+  const next = (e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    if (!images?.length) return;
+    setIdx((v) => (v + 1) % images.length);
+  };
 
-  return "/media/listings/placeholder-1.jpg";
+  const go = (n, e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    setIdx(n);
+  };
+
+  return { idx, setIdx, hasMany, prev, next, go };
 }
 
 export default function ListingCard({ listing, onToggleFav, canFavorite }) {
@@ -94,7 +120,6 @@ export default function ListingCard({ listing, onToggleFav, canFavorite }) {
   const fav = Boolean(listing?.isFavorite);
 
   const priceLabel = `${formatPrice(listing?.price)} грн/міс.`;
-  const cover = getCoverImage(listing);
 
   const availableFromLabel = useMemo(
     () => formatDateOnly(listing?.availableFrom),
@@ -102,7 +127,7 @@ export default function ListingCard({ listing, onToggleFav, canFavorite }) {
   );
 
   const areaLabel =
-    typeof listing?.area === "number" ? `${listing.area} м2` : "—";
+    typeof listing?.area === "number" ? `${listing.area} м²` : "—";
   const roomsLabel =
     typeof listing?.rooms === "number" ? String(listing.rooms) : "—";
 
@@ -111,10 +136,55 @@ export default function ListingCard({ listing, onToggleFav, canFavorite }) {
 
   const features = useMemo(() => buildFeatures(listing), [listing]);
 
+  const rawImages = useMemo(() => pickImages(listing), [listing]);
+  const images = useMemo(
+    () => rawImages.map(resolveImgSrc).filter(Boolean),
+    [rawImages],
+  );
+
+  const hasImages = images.length > 0;
+
+  const imagesKey = useMemo(() => {
+    const first = images[0] || "";
+    return `${String(listing?.id || "")}:${images.length}:${first}`;
+  }, [images, listing?.id]);
+
+  const { idx, setIdx, hasMany, prev, next, go } = useCarousel(images);
+
+  const [imgBroken, setImgBroken] = useState(false);
+
+  const safeIdx = hasImages ? Math.min(idx, images.length - 1) : 0;
+
   const toggleFav = (e) => {
     e.preventDefault();
     e.stopPropagation();
     onToggleFav?.(listing?.id);
+  };
+
+  const touchRef = useRef({ x: 0, y: 0, active: false });
+
+  const onTouchStart = (e) => {
+    if (!hasMany) return;
+    const t = e.touches?.[0];
+    if (!t) return;
+    touchRef.current = { x: t.clientX, y: t.clientY, active: true };
+  };
+
+  const onTouchEnd = (e) => {
+    if (!hasMany) return;
+    if (!touchRef.current.active) return;
+
+    const t = e.changedTouches?.[0];
+    touchRef.current.active = false;
+    if (!t) return;
+
+    const dx = t.clientX - touchRef.current.x;
+    const dy = t.clientY - touchRef.current.y;
+
+    if (Math.abs(dy) > Math.abs(dx)) return;
+
+    if (dx > 35) prev(e);
+    if (dx < -35) next(e);
   };
 
   return (
@@ -125,13 +195,72 @@ export default function ListingCard({ listing, onToggleFav, canFavorite }) {
       aria-label={`Open listing: ${title}`}
     >
       <article className={styles.card}>
-        <div className={styles.media}>
-          <img
-            className={styles.cover}
-            src={cover}
-            alt={title}
-            loading="lazy"
-          />
+        <div
+          key={imagesKey}
+          className={styles.media}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+        >
+          {hasImages && !imgBroken ? (
+            <>
+              <img
+                className={styles.cover}
+                src={images[safeIdx]}
+                alt={title}
+                loading="lazy"
+                onError={() => setImgBroken(true)}
+              />
+
+              {hasMany && (
+                <>
+                  <button
+                    type="button"
+                    className={`${styles.navBtn} ${styles.navPrev}`}
+                    onClick={(e) => {
+                      setImgBroken(false);
+                      prev(e);
+                    }}
+                    aria-label="Prev photo"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    className={`${styles.navBtn} ${styles.navNext}`}
+                    onClick={(e) => {
+                      setImgBroken(false);
+                      next(e);
+                    }}
+                    aria-label="Next photo"
+                  >
+                    ›
+                  </button>
+
+                  <div className={styles.dots} aria-label="Photos">
+                    {images.slice(0, 10).map((_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        className={`${styles.dot} ${
+                          i === safeIdx ? styles.dotActive : ""
+                        }`}
+                        onClick={(e) => {
+                          setImgBroken(false);
+                          setIdx(i);
+                          go(i, e);
+                        }}
+                        aria-label={`Photo ${i + 1}`}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </>
+          ) : (
+            <div className={styles.noPhoto} aria-label="No photo">
+              Фото нема
+            </div>
+          )}
         </div>
 
         <div className={styles.body}>

@@ -1,9 +1,9 @@
-// src/pages/ListingDetailsPage/ListingDetailsPage.jsx
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { listingsApi } from "../../api/listings";
 import { requestsApi } from "../../api/requests";
+import { API_BASE_URL } from "../../api/config";
 
 import styles from "./ListingDetailsPage.module.scss";
 
@@ -18,7 +18,6 @@ function formatPrice(value) {
   return value.toLocaleString("uk-UA");
 }
 
-// ✅ ISO -> "YYYY-MM-DD" (без времени и Z-адов)
 function formatDateOnly(value) {
   if (!value) return "—";
 
@@ -30,9 +29,20 @@ function formatDateOnly(value) {
         );
 
   if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "—";
-
-  // стабильный формат
   return d.toISOString().slice(0, 10);
+}
+
+function resolveMediaUrl(src) {
+  if (!src) return null;
+
+  // absolute keep
+  if (/^https?:\/\//i.test(src)) return src;
+
+  // "/media/..." -> API_BASE_URL + "/media/..."
+  if (src.startsWith("/")) return `${API_BASE_URL}${src}`;
+
+  // "file.jpg" -> API_BASE_URL + "/media/listings/file.jpg"
+  return `${API_BASE_URL}/media/listings/${src}`;
 }
 
 function getImages(listing) {
@@ -47,21 +57,12 @@ function getImages(listing) {
   };
 
   const mapped = list.map(pick).filter(Boolean);
+  const resolved = mapped.map(resolveMediaUrl).filter(Boolean);
 
-  const resolveSrc = (src) => {
-    if (!src) return null;
-    if (/^https?:\/\//i.test(src)) return src;
-    if (!src.startsWith("/")) return `/media/listings/${src}`;
-    return src;
-  };
-
-  const resolved = mapped.map(resolveSrc).filter(Boolean);
-
-  if (!resolved.length) return ["/media/listings/placeholder-1.jpg"];
+  // если нет реальных фото — возвращаем пусто, UI покажет "Фото нема"
   return resolved;
 }
 
-// ✅ pills: как в ListingCard
 function buildFeatures(listing) {
   const f = listing?.features || listing;
 
@@ -137,6 +138,7 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
   const [error, setError] = useState("");
 
   const [activeImg, setActiveImg] = useState(0);
+  const [imageBroken, setImageBroken] = useState(false);
 
   const [myReqStatus, setMyReqStatus] = useState("idle");
   const [myReqError, setMyReqError] = useState("");
@@ -158,6 +160,7 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
         setItem(data);
         setStatus("ok");
         setActiveImg(0);
+        setImageBroken(false);
       } catch (e) {
         if (!alive) return;
         setStatus("error");
@@ -177,8 +180,12 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
   const title = item?.title || item?.address || "Оголошення";
   const cityLabel = useMemo(() => getCityLabel(item?.city), [item?.city]);
   const priceLabel = item ? `${formatPrice(item.price)} грн/міс.` : "";
+
   const images = useMemo(() => getImages(item), [item]);
-  const mainImage = images[Math.min(activeImg, images.length - 1)];
+  const hasImages = images.length > 0;
+
+  const safeActive = Math.min(activeImg, Math.max(images.length - 1, 0));
+  const mainImage = hasImages ? images[safeActive] : null;
 
   const features = useMemo(() => buildFeatures(item), [item]);
 
@@ -294,9 +301,7 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
         setMyReqStatus("ok");
         setMyReqError("");
         setMyRequest((prev) => {
-          if (!prev) {
-            return { listingId: String(item.id), status: d.status };
-          }
+          if (!prev) return { listingId: String(item.id), status: d.status };
           if (String(prev.listingId) !== String(item.id)) return prev;
           return { ...prev, status: d.status };
         });
@@ -326,6 +331,8 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
     );
   };
 
+  const onMainImgError = () => setImageBroken(true);
+
   return (
     <div className={styles.page}>
       <div className="container">
@@ -349,13 +356,23 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
 
         {status === "ok" && item && (
           <div className={styles.layout}>
+            {/* LEFT: photo + actions */}
             <div className={styles.left}>
               <div className={styles.galleryCard}>
                 <div className={styles.galleryMain}>
-                  <img src={mainImage} alt={title} className={styles.mainImg} />
+                  {!hasImages || imageBroken ? (
+                    <div className={styles.noPhoto}>Фото нема</div>
+                  ) : (
+                    <img
+                      src={mainImage}
+                      alt={title}
+                      className={styles.mainImg}
+                      onError={onMainImgError}
+                    />
+                  )}
                 </div>
 
-                {images.length > 1 && (
+                {hasImages && images.length > 1 && (
                   <div
                     className={styles.thumbs}
                     role="tablist"
@@ -370,7 +387,10 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
                           className={
                             isActive ? styles.thumbBtnActive : styles.thumbBtn
                           }
-                          onClick={() => setActiveImg(idx)}
+                          onClick={() => {
+                            setActiveImg(idx);
+                            setImageBroken(false);
+                          }}
                           aria-current={isActive ? "true" : undefined}
                         >
                           <img src={src} alt="" className={styles.thumbImg} />
@@ -381,98 +401,6 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
                 )}
               </div>
 
-              <div className={styles.mainCard}>
-                <div className={styles.headerRow}>
-                  <div className={styles.headerLeft}>
-                    <h1 className={styles.title}>{title}</h1>
-                    <div className={styles.subtitle}>
-                      {cityLabel}
-                      {item.address ? ` • ${item.address}` : ""}
-                    </div>
-                  </div>
-
-                  <div className={styles.price}>{priceLabel}</div>
-                </div>
-
-                {features.length > 0 && (
-                  <div className={styles.features} aria-label="Features">
-                    {features.slice(0, 6).map((f) => (
-                      <span key={f.key} className={styles.featurePill}>
-                        {f.label}
-                      </span>
-                    ))}
-                    {features.length > 6 && (
-                      <span
-                        className={`${styles.featurePill} ${styles.featureMore}`}
-                      >
-                        +{features.length - 6}
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                <div className={styles.divider} />
-
-                <div className={styles.metaGrid}>
-                  <div className={styles.metaItem}>
-                    <div className={styles.metaLabel}>Орендодавець</div>
-                    <div className={styles.metaValue}>
-                      {item.landlordName || "—"}
-                      {typeof item.landlordRating === "number"
-                        ? ` (Рейтинг: ${item.landlordRating})`
-                        : ""}
-                    </div>
-                  </div>
-
-                  <div className={styles.metaItem}>
-                    <div className={styles.metaLabel}>Місто</div>
-                    <div className={styles.metaValue}>{cityLabel}</div>
-                  </div>
-
-                  <div className={styles.metaItem}>
-                    <div className={styles.metaLabel}>Адреса</div>
-                    <div className={styles.metaValue}>
-                      {item.address || "—"}
-                    </div>
-                  </div>
-
-                  {/* ✅ ID удалён */}
-
-                  {typeof item.rooms === "number" && item.rooms > 0 ? (
-                    <div className={styles.metaItem}>
-                      <div className={styles.metaLabel}>Кімнати</div>
-                      <div className={styles.metaValue}>{item.rooms}</div>
-                    </div>
-                  ) : null}
-
-                  {typeof item.area === "number" && item.area > 0 ? (
-                    <div className={styles.metaItem}>
-                      <div className={styles.metaLabel}>Метраж</div>
-                      <div className={styles.metaValue}>{item.area} м2</div>
-                    </div>
-                  ) : null}
-
-                  {item.availableFrom ? (
-                    <div className={styles.metaItem}>
-                      <div className={styles.metaLabel}>Доступно від</div>
-                      <div className={styles.metaValue}>
-                        {availableFromLabel}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-
-                {item.description ? (
-                  <>
-                    <div className={styles.divider} />
-                    <h2 className={styles.h2}>Опис</h2>
-                    <p className={styles.desc}>{item.description}</p>
-                  </>
-                ) : null}
-              </div>
-            </div>
-
-            <aside className={styles.right}>
               <div className={styles.sideCard}>
                 <div className={styles.sideTitle}>Швидкі дії</div>
 
@@ -557,7 +485,98 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
                   <li>Прозорі умови угоди</li>
                 </ul>
               </div>
-            </aside>
+            </div>
+
+            {/* RIGHT: content */}
+            <div className={styles.right}>
+              <div className={styles.mainCard}>
+                <div className={styles.headerRow}>
+                  <div className={styles.headerLeft}>
+                    <h1 className={styles.title}>{title}</h1>
+                    <div className={styles.subtitle}>
+                      {cityLabel}
+                      {item.address ? ` • ${item.address}` : ""}
+                    </div>
+                  </div>
+
+                  <div className={styles.price}>{priceLabel}</div>
+                </div>
+
+                {features.length > 0 && (
+                  <div className={styles.features} aria-label="Features">
+                    {features.slice(0, 6).map((f) => (
+                      <span key={f.key} className={styles.featurePill}>
+                        {f.label}
+                      </span>
+                    ))}
+                    {features.length > 6 && (
+                      <span
+                        className={`${styles.featurePill} ${styles.featureMore}`}
+                      >
+                        +{features.length - 6}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                <div className={styles.divider} />
+
+                <div className={styles.metaGrid}>
+                  <div className={styles.metaItem}>
+                    <div className={styles.metaLabel}>Орендодавець</div>
+                    <div className={styles.metaValue}>
+                      {item.landlordName || "—"}
+                      {typeof item.landlordRating === "number"
+                        ? ` (Рейтинг: ${item.landlordRating})`
+                        : ""}
+                    </div>
+                  </div>
+
+                  <div className={styles.metaItem}>
+                    <div className={styles.metaLabel}>Місто</div>
+                    <div className={styles.metaValue}>{cityLabel}</div>
+                  </div>
+
+                  <div className={styles.metaItem}>
+                    <div className={styles.metaLabel}>Адреса</div>
+                    <div className={styles.metaValue}>
+                      {item.address || "—"}
+                    </div>
+                  </div>
+
+                  {typeof item.rooms === "number" && item.rooms > 0 ? (
+                    <div className={styles.metaItem}>
+                      <div className={styles.metaLabel}>Кімнати</div>
+                      <div className={styles.metaValue}>{item.rooms}</div>
+                    </div>
+                  ) : null}
+
+                  {typeof item.area === "number" && item.area > 0 ? (
+                    <div className={styles.metaItem}>
+                      <div className={styles.metaLabel}>Метраж</div>
+                      <div className={styles.metaValue}>{item.area} м2</div>
+                    </div>
+                  ) : null}
+
+                  {item.availableFrom ? (
+                    <div className={styles.metaItem}>
+                      <div className={styles.metaLabel}>Доступно від</div>
+                      <div className={styles.metaValue}>
+                        {availableFromLabel}
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+
+                {item.description ? (
+                  <>
+                    <div className={styles.divider} />
+                    <h2 className={styles.h2}>Опис</h2>
+                    <p className={styles.desc}>{item.description}</p>
+                  </>
+                ) : null}
+              </div>
+            </div>
           </div>
         )}
       </div>

@@ -29,9 +29,19 @@
   gap: 14px;
 }
 
+.row3 {
+  display: grid;
+  gap: 14px;
+}
+
 @media (min-width: 640px) {
   .row2 {
     grid-template-columns: 1fr 220px;
+    align-items: end;
+  }
+
+  .row3 {
+    grid-template-columns: 1fr 1fr 1fr;
     align-items: end;
   }
 }
@@ -159,6 +169,206 @@
     background: rgba(0, 0, 0, 0.04);
     color: rgba(0, 0, 0, 0.9);
   }
+}
+
+.selectBox {
+  position: relative;
+}
+
+.selectBtn {
+  width: 100%;
+  height: 44px;
+  border-radius: 30px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  padding: 0 52px 0 16px;
+  background: #fff;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(255, 92, 98, 0.18);
+  }
+}
+
+.selectValue {
+  width: 100%;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  color: var(--color-secondary, rgba(0, 0, 0, 0.55));
+  font-size: 16px;
+}
+
+.selectIcon {
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+  }
+}
+
+.calendarWrap {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  z-index: 80;
+}
+
+.featuresBlock {
+  margin-top: 4px;
+}
+
+.featuresTitle {
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.75);
+  margin-bottom: 10px;
+}
+
+.featuresGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 18px;
+}
+
+@media (max-width: 640px) {
+  .featuresGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .row3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.toggleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.toggleLabel {
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.toggle {
+  width: 56px;
+  height: 30px;
+  border-radius: 30px;
+  border: 0;
+  cursor: pointer;
+  background: rgba(0, 0, 0, 0.2);
+  position: relative;
+  transition: background 200ms ease;
+}
+
+.toggleOn {
+  background: var(--color-primary, #ff5c62);
+}
+
+.knob {
+  width: 24px;
+  height: 24px;
+  border-radius: 30px;
+  background: #fff;
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  transition: transform 200ms ease;
+}
+
+.toggleOn .knob {
+  transform: translateX(26px);
+}
+
+/* ✅ File input + thumbs */
+.fileInput {
+  width: 100%;
+}
+
+.fileNames {
+  color: rgba(0, 0, 0, 0.55);
+  font-weight: 600;
+  font-size: 14px;
+  display: grid;
+  gap: 4px;
+}
+
+.uploadHint {
+  color: rgba(0, 0, 0, 0.55);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.thumbGrid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+@media (max-width: 640px) {
+  .thumbGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.thumbItem {
+  position: relative;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: #fff;
+}
+
+.thumbImg {
+  width: 100%;
+  height: 92px;
+  object-fit: cover;
+  display: block;
+}
+
+.thumbRemove {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+
+  width: 26px;
+  height: 26px;
+  border-radius: 30px;
+  border: 0;
+  cursor: pointer;
+
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Mobile */

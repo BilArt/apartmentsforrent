@@ -41,6 +41,37 @@ function emitRequestCreated(listingId) {
   window.dispatchEvent(new CustomEvent("requestStatusChanged", { detail }));
 }
 
+const TG_RE = /^@[a-zA-Z0-9_]{5,32}$/;
+const UA_PHONE_RE = /^\+380\d{9}$/;
+
+function normalizeContact(raw) {
+  const s = String(raw ?? "").trim();
+
+  if (s.startsWith("@")) return s.replace(/[^@a-zA-Z0-9_]/g, "");
+
+  let out = s.replace(/[^\d+]/g, "");
+
+  if (out.startsWith("380")) out = `+${out}`;
+
+  return out;
+}
+
+function validateContact(raw) {
+  const v = normalizeContact(raw);
+  const ok = TG_RE.test(v) || UA_PHONE_RE.test(v);
+
+  if (!ok) {
+    return {
+      ok: false,
+      value: v,
+      message:
+        "Контакт має бути або Telegram (@username), або телефон у форматі +380XXXXXXXXX.",
+    };
+  }
+
+  return { ok: true, value: v, message: "" };
+}
+
 export default function ViewingRequestForm({ listingId, onCancel, onSuccess }) {
   const [open, setOpen] = useState(false);
   const calWrapRef = useRef(null);
@@ -76,8 +107,14 @@ export default function ViewingRequestForm({ listingId, onCancel, onSuccess }) {
 
     setError("");
 
-    if (!name.trim()) return setError("Вкажи ім'я.");
-    if (!contact.trim()) return setError("Вкажи контакт.");
+    const cleanName = name.trim();
+    const cleanComment = comment.trim();
+
+    if (!cleanName) return setError("Вкажи ім'я.");
+
+    const contactCheck = validateContact(contact);
+    if (!contactCheck.ok) return setError(contactCheck.message);
+
     if (!date) return setError("Обери дату.");
 
     const iso = formatISODate(date);
@@ -85,9 +122,9 @@ export default function ViewingRequestForm({ listingId, onCancel, onSuccess }) {
     const payload = {
       from: iso,
       to: iso,
-      message: `Ім'я: ${name.trim()}
-Контакт: ${contact.trim()}${
-        comment.trim() ? `\n\nКоментар:\n${comment.trim()}` : ""
+      message: `Ім'я: ${cleanName}
+Контакт: ${contactCheck.value}${
+        cleanComment ? `\n\nКоментар:\n${cleanComment}` : ""
       }`,
     };
 
@@ -106,9 +143,17 @@ export default function ViewingRequestForm({ listingId, onCancel, onSuccess }) {
     }
   };
 
+  const onContactChange = (e) => {
+    setContact(e.target.value);
+  };
+
+  const onContactBlur = () => {
+    const normalized = normalizeContact(contact);
+    if (normalized !== contact) setContact(normalized);
+  };
+
   return (
     <form className={styles.form} onSubmit={submit}>
-      <div className={styles.subtitle}>Оголошення: {listingId}</div>
 
       {error ? <div className={styles.error}>{error}</div> : null}
 
@@ -119,6 +164,7 @@ export default function ViewingRequestForm({ listingId, onCancel, onSuccess }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Напр. Артем"
+            autoComplete="name"
           />
           {name && (
             <button
@@ -138,8 +184,11 @@ export default function ViewingRequestForm({ listingId, onCancel, onSuccess }) {
         <div className={styles.control}>
           <input
             value={contact}
-            onChange={(e) => setContact(e.target.value)}
-            placeholder="+45... або @username"
+            onChange={onContactChange}
+            onBlur={onContactBlur}
+            placeholder="+380XXXXXXXXX або @username"
+            autoComplete="tel"
+            inputMode="text"
           />
           {contact && (
             <button
@@ -213,9 +262,7 @@ export default function ViewingRequestForm({ listingId, onCancel, onSuccess }) {
         </button>
       </div>
 
-      <div className={styles.note}>
-        MVP: запит йде на бекенд через /listings/:id/requests.
-      </div>
+      {/* ✅ Убрали MVP-note */}
     </form>
   );
 }

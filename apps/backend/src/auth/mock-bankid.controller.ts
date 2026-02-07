@@ -1,4 +1,4 @@
-import { Controller, Get, Query, Res } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
 import type { Response } from 'express';
 import {
   issueAuthCode,
@@ -25,6 +25,21 @@ function esc(s: string) {
   });
 }
 
+type Intent = 'signin' | 'signup';
+
+type ConfirmBody = {
+  redirect_uri: string;
+  state: string;
+  nonce?: string;
+  provider?: BankIdProvider;
+  intent?: string;
+
+  sub?: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+};
+
 @Controller('mock-bankid')
 export class MockBankIdController {
   @Get('authorize')
@@ -33,14 +48,57 @@ export class MockBankIdController {
     @Query('state') state: string,
     @Query('nonce') nonce: string,
     @Query('provider') provider: BankIdProvider,
-    @Res() res: Response,
+    @Query('intent') intent?: string,
+    @Res() res?: Response,
   ) {
+    if (!res) return;
+
     const prov: BankIdProvider = provider === 'privat' ? 'privat' : 'mono';
+    const flow: Intent = intent === 'signup' ? 'signup' : 'signin';
 
     const namePattern = "^[\\p{L}][\\p{L}\\s'’\\-]{1,49}$";
 
     const phonePattern = '^\\+380\\d{9}$';
     const phoneMaxLen = 13;
+
+    const signupFieldsHtml =
+      flow === 'signup'
+        ? `
+          <div class="grid2">
+            <div class="field">
+              <label>Імʼя</label>
+              <input
+                name="firstName"
+                placeholder="Імʼя"
+                required
+                pattern="${esc(namePattern)}"
+                title="Тільки літери (без цифр), можна пробіл/дефіс/апостроф. Мінімум 2 символи."
+                autocomplete="given-name"
+              />
+            </div>
+            <div class="field">
+              <label>Прізвище</label>
+              <input
+                name="lastName"
+                placeholder="Прізвище"
+                required
+                pattern="${esc(namePattern)}"
+                title="Тільки літери (без цифр), можна пробіл/дефіс/апостроф. Мінімум 2 символи."
+                autocomplete="family-name"
+              />
+            </div>
+          </div>
+        `
+        : `
+          <!-- signin: имена не спрашиваем -->
+          <input type="hidden" name="firstName" value="User" />
+          <input type="hidden" name="lastName" value="Mock" />
+        `;
+
+    const subtitle =
+      flow === 'signup'
+        ? 'Це мок провайдера. Імітуємо redirect-flow: authorize → confirm → callback.'
+        : 'Це мок провайдера. Для входу достатньо підтвердити номер телефону.';
 
     const html = `<!doctype html>
 <html lang="uk">
@@ -48,6 +106,7 @@ export class MockBankIdController {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Mock BankID — ${esc(prov)}</title>
+    <meta http-equiv="Cache-Control" content="no-store" />
     <style>
       :root{
         --bg: #fafafa;
@@ -216,24 +275,16 @@ export class MockBankIdController {
 
     <script>
       (function() {
+        const FLOW = ${JSON.stringify(flow)};
         const NAME_RE = new RegExp(${JSON.stringify(namePattern)}, 'u');
         const UA_PHONE_RE = new RegExp(${JSON.stringify(phonePattern)});
         const UA_PREFIX = '+380';
         const MAX_DIGITS = 12; // 380 + 9 digits (без "+")
         const MAX_LEN = ${phoneMaxLen}; // 13 (с "+")
 
-        function digitsOnly(v) {
-          return String(v || '').replace(/\\D+/g, '');
-        }
+        function digitsOnly(v) { return String(v || '').replace(/\\D+/g, ''); }
+        function limitDigits(d) { return String(d || '').slice(0, MAX_DIGITS); }
 
-        function limitDigits(d) {
-          return String(d || '').slice(0, MAX_DIGITS);
-        }
-
-        // 067xxxxxxx -> +38067xxxxxxx
-        // 38067xxxxxxx -> +38067xxxxxxx
-        // +38067xxxxxxx -> +38067xxxxxxx
-        // 67xxxxxxx (9 digits) -> +38067xxxxxxx
         function normalizeUaPhone(input) {
           const raw = String(input || '').trim();
           let d = digitsOnly(raw);
@@ -254,7 +305,7 @@ export class MockBankIdController {
             return UA_PREFIX + d;
           }
 
-          return '+' + d; // дальше валидация зарежет
+          return '+' + d;
         }
 
         function setInvalid(input, isInvalid) {
@@ -292,24 +343,26 @@ export class MockBankIdController {
           const errors = [];
 
           const sub = normalizeSpaces(form.sub?.value);
-          const fnRaw = form.firstName?.value || '';
-          const lnRaw = form.lastName?.value || '';
-          const phoneRaw = form.phone?.value || '';
-
           const subInvalid = !sub || sub.length < 3;
           setInvalid(form.sub, subInvalid);
           if (subInvalid) errors.push('Поле sub має містити мінімум 3 символи.');
 
-          const fn = validateName(fnRaw);
-          form.firstName.value = fn.value;
-          setInvalid(form.firstName, !fn.ok);
-          if (!fn.ok) errors.push("Імʼя: тільки літери (без цифр), можна пробіл/дефіс/апостроф. Мінімум 2 символи.");
+          if (FLOW === 'signup') {
+            const fnRaw = form.firstName?.value || '';
+            const lnRaw = form.lastName?.value || '';
 
-          const ln = validateName(lnRaw);
-          form.lastName.value = ln.value;
-          setInvalid(form.lastName, !ln.ok);
-          if (!ln.ok) errors.push("Прізвище: тільки літери (без цифр), можна пробіл/дефіс/апостроф. Мінімум 2 символи.");
+            const fn = validateName(fnRaw);
+            form.firstName.value = fn.value;
+            setInvalid(form.firstName, !fn.ok);
+            if (!fn.ok) errors.push("Імʼя: тільки літери (без цифр), можна пробіл/дефіс/апостроф. Мінімум 2 символи.");
 
+            const ln = validateName(lnRaw);
+            form.lastName.value = ln.value;
+            setInvalid(form.lastName, !ln.ok);
+            if (!ln.ok) errors.push("Прізвище: тільки літери (без цифр), можна пробіл/дефіс/апостроф. Мінімум 2 символи.");
+          }
+
+          const phoneRaw = form.phone?.value || '';
           const phoneNorm = normalizeUaPhone(phoneRaw);
           form.phone.value = phoneNorm;
 
@@ -336,26 +389,20 @@ export class MockBankIdController {
             if (box) box.classList.remove('show');
           };
 
-          const first = form.firstName;
-          const last = form.lastName;
-          const phone = form.phone;
-
-          [form.sub, first, last, phone].filter(Boolean).forEach((inp) => {
-            inp.addEventListener('input', () => {
-              inp.classList.remove('isInvalid');
-              hide();
+          [form.sub, form.firstName, form.lastName, form.phone]
+            .filter(Boolean)
+            .forEach((inp) => {
+              inp.addEventListener('input', () => {
+                inp.classList.remove('isInvalid');
+                hide();
+              });
             });
-          });
 
-          // Телефон: оставляем + и цифры, лимитим длину (и цифры тоже)
+          const phone = form.phone;
           if (phone) {
             phone.addEventListener('input', () => {
               let v = String(phone.value || '');
-
-              // выкидываем мусор, оставляем + и цифры
               v = v.replace(/[^\\d+]/g, '');
-
-              // если "+" не первый — убираем
               if (v.includes('+') && v[0] !== '+') v = v.replace(/\\+/g, '');
 
               if (v.startsWith('+')) {
@@ -366,7 +413,6 @@ export class MockBankIdController {
                 phone.value = d;
               }
 
-              // финальный предохранитель по длине (на всякий)
               if (phone.value.length > MAX_LEN) {
                 phone.value = phone.value.slice(0, MAX_LEN);
               }
@@ -376,11 +422,9 @@ export class MockBankIdController {
               phone.value = normalizeUaPhone(phone.value);
             });
 
-            // дефолт
             if (!String(phone.value || '').trim()) phone.value = '+380';
           }
 
-          // Имена: убираем цифры на лету
           const stripDigits = (inp) => {
             inp.addEventListener('input', () => {
               inp.value = String(inp.value || '').replace(/\\d+/g, '');
@@ -390,8 +434,8 @@ export class MockBankIdController {
             });
           };
 
-          if (first) stripDigits(first);
-          if (last) stripDigits(last);
+          if (form.firstName) stripDigits(form.firstName);
+          if (form.lastName) stripDigits(form.lastName);
         };
       })();
     </script>
@@ -405,15 +449,19 @@ export class MockBankIdController {
           <span class="pill">${esc(prov)}</span>
         </div>
 
-        <p class="note">
-          Це мок провайдера. Імітуємо redirect-flow: authorize → confirm → callback.
-        </p>
+        <p class="note">${esc(subtitle)}</p>
 
-        <form id="mockForm" method="GET" action="/mock-bankid/confirm" onsubmit="return validateMockBankId(this)">
+        <form
+          id="mockForm"
+          method="POST"
+          action="/mock-bankid/confirm"
+          onsubmit="return validateMockBankId(this)"
+        >
           <input type="hidden" name="redirect_uri" value="${esc(redirectUri)}" />
           <input type="hidden" name="state" value="${esc(state)}" />
           <input type="hidden" name="nonce" value="${esc(nonce)}" />
           <input type="hidden" name="provider" value="${esc(prov)}" />
+          <input type="hidden" name="intent" value="${esc(flow)}" />
 
           <div class="field">
             <label>sub (унікальний id користувача у провайдера)</label>
@@ -427,30 +475,7 @@ export class MockBankIdController {
             />
           </div>
 
-          <div class="grid2">
-            <div class="field">
-              <label>Імʼя</label>
-              <input
-                name="firstName"
-                placeholder="Імʼя"
-                required
-                pattern="${esc(namePattern)}"
-                title="Тільки літери (без цифр), можна пробіл/дефіс/апостроф. Мінімум 2 символи."
-                autocomplete="given-name"
-              />
-            </div>
-            <div class="field">
-              <label>Прізвище</label>
-              <input
-                name="lastName"
-                placeholder="Прізвище"
-                required
-                pattern="${esc(namePattern)}"
-                title="Тільки літери (без цифр), можна пробіл/дефіс/апостроф. Мінімум 2 символи."
-                autocomplete="family-name"
-              />
-            </div>
-          </div>
+          ${signupFieldsHtml}
 
           <div class="field">
             <label>Телефон (+380XXXXXXXXX)</label>
@@ -484,21 +509,15 @@ export class MockBankIdController {
 </html>`;
 
     res.setHeader('content-type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-store');
     res.status(200).send(html);
   }
 
-  @Get('confirm')
-  confirm(
-    @Query('redirect_uri') redirectUri: string,
-    @Query('state') state: string,
-    @Query('provider') provider: BankIdProvider,
-    @Query('sub') sub: string,
-    @Query('firstName') firstName: string,
-    @Query('lastName') lastName: string,
-    @Query('phone') phone: string,
-    @Res() res: Response,
-  ) {
-    const prov: BankIdProvider = provider === 'privat' ? 'privat' : 'mono';
+  @Post('confirm')
+  confirm(@Body() body: ConfirmBody, @Res() res: Response) {
+    const redirectUri = String(body.redirect_uri || '').trim();
+    const state = String(body.state || '').trim();
+    const prov: BankIdProvider = body.provider === 'privat' ? 'privat' : 'mono';
 
     const clean = (v: string) =>
       String(v || '')
@@ -506,10 +525,10 @@ export class MockBankIdController {
         .replace(/\s+/g, ' ');
 
     const claims: MockClaims = {
-      sub: clean(sub) || `${prov}-user`,
-      firstName: clean(firstName) || 'User',
-      lastName: clean(lastName) || 'Mock',
-      phone: clean(phone) || '+380671111111',
+      sub: clean(body.sub || '') || `${prov}-user`,
+      firstName: clean(body.firstName || '') || 'User',
+      lastName: clean(body.lastName || '') || 'Mock',
+      phone: clean(body.phone || '') || '+380671111111',
     };
 
     const code = issueAuthCode(prov, claims);
