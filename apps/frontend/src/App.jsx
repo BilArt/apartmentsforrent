@@ -66,9 +66,9 @@ function App() {
   useEffect(() => {
     let alive = true;
 
-    setAuthLoading(true);
+    const syncMe = async () => {
+      setAuthLoading(true);
 
-    (async () => {
       try {
         const user = await authApi.me();
         if (!alive) return;
@@ -79,10 +79,27 @@ function App() {
       } finally {
         if (alive) setAuthLoading(false);
       }
-    })();
+    };
+
+    syncMe();
+
+    const onPageShow = () => {
+      syncMe();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        syncMe();
+      }
+    };
+
+    window.addEventListener("pageshow", onPageShow);
+    document.addEventListener("visibilitychange", onVisibilityChange);
 
     return () => {
       alive = false;
+      window.removeEventListener("pageshow", onPageShow);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
     };
   }, []);
 

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Get,
@@ -22,6 +23,12 @@ export class AuthController {
     @Body() body: RegisterDto,
     @Req() req: Request,
   ): Promise<PublicUser> {
+    if (String(body.bankId || '').startsWith('manual:') && !body.password) {
+      throw new BadRequestException(
+        'Password is required for manual registration',
+      );
+    }
+
     const user = await this.auth.register(body);
     req.session.userId = user.id;
     return user;
@@ -29,9 +36,19 @@ export class AuthController {
 
   @Post('login')
   async login(@Body() dto: LoginDto, @Req() req: Request): Promise<PublicUser> {
-    const user = await this.auth.login(dto.bankId);
-    req.session.userId = user.id;
-    return user;
+    if (dto.bankId) {
+      const user = await this.auth.loginByBankId(dto.bankId);
+      req.session.userId = user.id;
+      return user;
+    }
+
+    if (dto.phone && dto.password) {
+      const user = await this.auth.loginByPhone(dto.phone, dto.password);
+      req.session.userId = user.id;
+      return user;
+    }
+
+    throw new BadRequestException('Provide bankId OR phone+password');
   }
 
   @Post('logout')

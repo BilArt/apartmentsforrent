@@ -53,6 +53,25 @@
   color: #e11d48;
 }
 
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fieldError {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e11d48;
+  padding-left: 6px;
+}
+
+.submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .submit {
   margin-top: 6px;
   height: 44px;

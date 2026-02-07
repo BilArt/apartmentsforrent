@@ -1,86 +1,98 @@
 import { useMemo, useState } from "react";
 import Modal from "../Modal/Modal";
-import { authApi } from "../../api/auth";
 import styles from "./AuthModal.module.scss";
 
-const SEED_OPTIONS = [
-  { label: "Орендар (seed)", value: "SEED-BANKID-TENANT-1" },
-  { label: "Орендодавець 1 (seed)", value: "SEED-BANKID-1" },
-  { label: "Орендодавець 2 (seed)", value: "SEED-BANKID-2" },
-  { label: "Орендодавець 3 (seed)", value: "SEED-BANKID-3" },
-];
+import SignInForm from "../SignInForm/SignInForm";
+import RegisterForm from "../RegisterForm/RegisterForm";
 
-export default function AuthModal({ isOpen, onClose, onSuccess }) {
-  const [bankId, setBankId] = useState(SEED_OPTIONS[0].value);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+function buildBankIdStartUrl(provider, returnTo) {
+  const base = "";
 
-  const canSubmit = useMemo(() => bankId.trim().length > 0, [bankId]);
+  const p = provider === "privat" ? "privat" : "mono";
+  const rt = encodeURIComponent(returnTo);
+
+  return `${base}/auth/bankid/start?provider=${p}&returnTo=${rt}`;
+}
+
+export default function AuthModal({ isOpen, onClose, onSuccess, initialMode }) {
+  const [mode, setMode] = useState(
+    initialMode === "signup" ? "signup" : "signin",
+  );
+  const [provider, setProvider] = useState("mono");
+
+  const title = useMemo(
+    () => (mode === "signup" ? "Реєстрація" : "Увійти"),
+    [mode],
+  );
 
   if (!isOpen) return null;
 
-  const submit = async (e) => {
-    e.preventDefault();
-    if (!canSubmit || loading) return;
+  const handleAuthed = (user) => {
+    onSuccess?.(user);
+    onClose?.();
+  };
 
-    setLoading(true);
-    setError("");
+  const onBankId = () => {
+    const returnTo = window.location.href;
 
-    try {
-      const user = await authApi.login({ bankId: bankId.trim() });
-      onSuccess?.(user);
-      onClose?.();
-    } catch (err) {
-      setError(err?.message || "Не вдалося увійти");
-    } finally {
-      setLoading(false);
-    }
+    onClose?.();
+
+    window.location.href = buildBankIdStartUrl(provider, returnTo);
   };
 
   return (
-    <Modal title="Увійти" onClose={onClose}>
-      <form className={styles.form} onSubmit={submit}>
-        <label className={styles.label}>
-          BankID (MVP)
-          <select
-            className={styles.input}
-            value={bankId}
-            onChange={(e) => setBankId(e.target.value)}
-            disabled={loading}
-          >
-            {SEED_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label} — {o.value}
-              </option>
-            ))}
-          </select>
-        </label>
+    <Modal title={title} onClose={onClose}>
+      <div className={styles.wrap}>
+        <div className={styles.topRow}>
+          <div className={styles.tabs}>
+            <button
+              type="button"
+              className={`${styles.tab} ${mode === "signin" ? styles.tabActive : ""}`}
+              onClick={() => setMode("signin")}
+            >
+              Увійти
+            </button>
+            <button
+              type="button"
+              className={`${styles.tab} ${mode === "signup" ? styles.tabActive : ""}`}
+              onClick={() => setMode("signup")}
+            >
+              Реєстрація
+            </button>
+          </div>
 
-        <div className={styles.hint}>
-          Можеш також вписати вручну будь-який існуючий <b>bankId</b>.
+          <div className={styles.provider}>
+            <button
+              type="button"
+              className={`${styles.providerBtn} ${provider === "mono" ? styles.providerActive : ""}`}
+              onClick={() => setProvider("mono")}
+            >
+              mono
+            </button>
+            <button
+              type="button"
+              className={`${styles.providerBtn} ${provider === "privat" ? styles.providerActive : ""}`}
+              onClick={() => setProvider("privat")}
+            >
+              Privat
+            </button>
+          </div>
         </div>
 
-        {error ? <div className={styles.error}>{error}</div> : null}
-
-        <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.ghostBtn}
-            onClick={onClose}
-            disabled={loading}
-          >
-            Скасувати
-          </button>
-
-          <button
-            type="submit"
-            className={styles.primaryBtn}
-            disabled={!canSubmit || loading}
-          >
-            {loading ? "Входимо…" : "Увійти"}
-          </button>
-        </div>
-      </form>
+        {mode === "signin" ? (
+          <SignInForm
+            onSignedIn={handleAuthed}
+            onGoSignUp={() => setMode("signup")}
+            onBankId={onBankId}
+          />
+        ) : (
+          <RegisterForm
+            onRegistered={handleAuthed}
+            onGoSignIn={() => setMode("signin")}
+            onBankId={onBankId}
+          />
+        )}
+      </div>
     </Modal>
   );
 }

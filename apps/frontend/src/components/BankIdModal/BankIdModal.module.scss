@@ -122,23 +122,19 @@
   }
 }
 
-.hint {
+.fieldError {
   font-family:
     "Inter",
     system-ui,
     -apple-system,
     sans-serif;
-  font-weight: 400;
-  font-size: 16px;
-  line-height: 1;
+  font-weight: 600;
+  font-size: 12px;
+  line-height: 1.2;
   letter-spacing: 0;
 
-  color: var(--color-text-secondary);
-
-  b {
-    color: var(--color-text-primary);
-    font-weight: 600;
-  }
+  color: #e11d48;
+  padding-left: 6px;
 }
 
 .note {
@@ -243,6 +239,14 @@
     cursor: default;
     transform: none;
   }
+}
+
+.fieldError {
+  display: block;
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #e11d48;
 }
 
 /* Tablet */

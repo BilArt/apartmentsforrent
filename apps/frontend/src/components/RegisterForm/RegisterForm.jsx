@@ -1,41 +1,177 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import styles from "./RegisterForm.module.scss";
 import { authApi } from "../../api/auth";
+
+const UA_PREFIX = "+380";
+const UA_PREFIX_DIGITS = "380";
+
+const NAME_ALLOWED_RE = /^[\p{L}]+(?:[ '\-’][\p{L}]+)*$/u;
+
+function normalizeName(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function digitsOnly(value) {
+  return String(value || "").replace(/\D+/g, "");
+}
+
+function normalizeUaPhone(input) {
+  const d = digitsOnly(input);
+
+  if (!d) return UA_PREFIX;
+
+  if (d.startsWith("0") && d.length === 10) {
+    return UA_PREFIX + d.slice(1);
+  }
+
+  if (d.startsWith(UA_PREFIX_DIGITS)) {
+    const rest = d.slice(3);
+    return UA_PREFIX + rest;
+  }
+
+  if (d.length === 9) {
+    return UA_PREFIX + d;
+  }
+
+  return "+" + d;
+}
+
+function isValidUaPhone(normalized) {
+  return /^\+380\d{9}$/.test(normalized);
+}
+
+function validate({ firstName, lastName, phoneNormalized, password }) {
+  const errors = {};
+
+  const fn = normalizeName(firstName);
+  const ln = normalizeName(lastName);
+
+  if (!fn) errors.firstName = "Вкажіть ім’я.";
+  else if (!NAME_ALLOWED_RE.test(fn))
+    errors.firstName = "Ім’я: лише літери (можна пробіл/дефіс/апостроф).";
+  else if (fn.length < 2) errors.firstName = "Ім’я занадто коротке.";
+
+  if (!ln) errors.lastName = "Вкажіть прізвище.";
+  else if (!NAME_ALLOWED_RE.test(ln))
+    errors.lastName = "Прізвище: лише літери (можна пробіл/дефіс/апостроф).";
+  else if (ln.length < 2) errors.lastName = "Прізвище занадто коротке.";
+
+  if (!phoneNormalized || phoneNormalized === UA_PREFIX)
+    errors.phone = "Вкажіть телефон.";
+  else if (!isValidUaPhone(phoneNormalized))
+    errors.phone = "Телефон має бути у форматі +380XXXXXXXXX (Україна).";
+
+  if (!password) errors.password = "Вкажіть пароль.";
+  else if (password.length < 4)
+    errors.password = "Пароль має бути мінімум 4 символи.";
+
+  return errors;
+}
 
 function RegisterForm({ onRegistered, onGoSignIn, onBankId }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [phone, setPhone] = useState(UA_PREFIX);
+  const [password, setPassword] = useState("");
 
+  const [formErrors, setFormErrors] = useState({});
   const [error, setError] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+
+  const phoneNormalized = useMemo(() => normalizeUaPhone(phone), [phone]);
+
+  const canSubmit = useMemo(() => {
+    if (submitting) return false;
+    return (
+      NAME_ALLOWED_RE.test(normalizeName(firstName)) &&
+      NAME_ALLOWED_RE.test(normalizeName(lastName)) &&
+      isValidUaPhone(phoneNormalized) &&
+      password.length >= 4
+    );
+  }, [submitting, firstName, lastName, phoneNormalized, password]);
+
+  const onFirstNameChange = (e) => {
+    const raw = e.target.value;
+    const cleaned = raw.replace(/[0-9]/g, "");
+    setFirstName(cleaned);
+    setFormErrors((p) => ({ ...p, firstName: undefined }));
+    setError(null);
+  };
+
+  const onLastNameChange = (e) => {
+    const raw = e.target.value;
+    const cleaned = raw.replace(/[0-9]/g, "");
+    setLastName(cleaned);
+    setFormErrors((p) => ({ ...p, lastName: undefined }));
+    setError(null);
+  };
+
+  const onPhoneChange = (e) => {
+    const raw = e.target.value;
+    const safe = raw.replace(/[^\d+()\-\s]/g, "");
+
+    if (!safe.startsWith(UA_PREFIX)) {
+      const d = digitsOnly(safe);
+      setPhone(d ? normalizeUaPhone(d) : UA_PREFIX);
+    } else {
+      setPhone(safe);
+    }
+
+    setFormErrors((p) => ({ ...p, phone: undefined }));
+    setError(null);
+  };
+
+  const handlePhoneBlur = () => {
+    const normalized = normalizeUaPhone(phone);
+    setPhone(normalized || UA_PREFIX);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!firstName.trim() || !lastName.trim() || !phone.trim()) {
-      setError("Заповніть ім’я, прізвище та телефон або скористайтесь BankID.");
+    const trimmedFirst = normalizeName(firstName);
+    const trimmedLast = normalizeName(lastName);
+    const normalizedPhone = normalizeUaPhone(phone);
+
+    const errors = validate({
+      firstName: trimmedFirst,
+      lastName: trimmedLast,
+      phoneNormalized: normalizedPhone,
+      password,
+    });
+
+    setFormErrors(errors);
+
+    if (Object.keys(errors).length) {
+      setError("Перевірте поля форми.");
       return;
     }
 
     try {
+      setSubmitting(true);
       setError(null);
 
       const payload = {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phone: phone.trim(),
-        bankId: `manual:${phone.trim()}`,
+        firstName: trimmedFirst,
+        lastName: trimmedLast,
+        phone: normalizedPhone,
+        bankId: `manual:${normalizedPhone}`,
+        password, // <-- ВАЖНО: теперь manual регистрация проходит
       };
 
       const user = await authApi.register(payload);
       onRegistered?.(user);
     } catch (err) {
-      setError(err.message || "Помилка реєстрації");
+      setError(err?.message || "Помилка реєстрації");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   return (
-    <form className={styles.form} onSubmit={handleSubmit}>
+    <form className={styles.form} onSubmit={handleSubmit} noValidate>
       <div className={styles.tip}>
         <strong>Найкраще — через BankID</strong>
         <p>
@@ -57,9 +193,25 @@ function RegisterForm({ onRegistered, onGoSignIn, onBankId }) {
           type="text"
           placeholder="Ім’я"
           value={firstName}
-          onChange={(e) => setFirstName(e.target.value)}
+          onChange={onFirstNameChange}
+          onBlur={() => {
+            const v = normalizeName(firstName);
+            setFirstName(v);
+            const fe = validate({
+              firstName: v,
+              lastName,
+              phoneNormalized,
+              password,
+            });
+            setFormErrors((p) => ({ ...p, firstName: fe.firstName }));
+          }}
           autoComplete="given-name"
+          inputMode="text"
+          aria-invalid={!!formErrors.firstName}
         />
+        {formErrors.firstName && (
+          <span className={styles.fieldError}>{formErrors.firstName}</span>
+        )}
       </label>
 
       <label className={styles.field}>
@@ -67,25 +219,79 @@ function RegisterForm({ onRegistered, onGoSignIn, onBankId }) {
           type="text"
           placeholder="Прізвище"
           value={lastName}
-          onChange={(e) => setLastName(e.target.value)}
+          onChange={onLastNameChange}
+          onBlur={() => {
+            const v = normalizeName(lastName);
+            setLastName(v);
+            const fe = validate({
+              firstName,
+              lastName: v,
+              phoneNormalized,
+              password,
+            });
+            setFormErrors((p) => ({ ...p, lastName: fe.lastName }));
+          }}
           autoComplete="family-name"
+          inputMode="text"
+          aria-invalid={!!formErrors.lastName}
         />
+        {formErrors.lastName && (
+          <span className={styles.fieldError}>{formErrors.lastName}</span>
+        )}
       </label>
 
       <label className={styles.field}>
         <input
           type="tel"
-          placeholder="Телефон"
+          placeholder="+380XXXXXXXXX"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          onChange={onPhoneChange}
+          onBlur={handlePhoneBlur}
           autoComplete="tel"
+          inputMode="numeric"
+          aria-invalid={!!formErrors.phone}
         />
+        {formErrors.phone && (
+          <span className={styles.fieldError}>{formErrors.phone}</span>
+        )}
+      </label>
+
+      <label className={styles.field}>
+        <input
+          type="password"
+          placeholder="Пароль"
+          value={password}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setFormErrors((p) => ({ ...p, password: undefined }));
+            setError(null);
+          }}
+          onBlur={() => {
+            const fe = validate({
+              firstName,
+              lastName,
+              phoneNormalized,
+              password,
+            });
+            setFormErrors((p) => ({ ...p, password: fe.password }));
+          }}
+          autoComplete="new-password"
+          aria-invalid={!!formErrors.password}
+        />
+        {formErrors.password && (
+          <span className={styles.fieldError}>{formErrors.password}</span>
+        )}
       </label>
 
       {error && <p className={styles.error}>{error}</p>}
 
-      <button type="submit" className={styles.submit}>
-        Зареєструватися
+      <button
+        type="submit"
+        className={styles.submit}
+        disabled={!canSubmit}
+        aria-busy={submitting}
+      >
+        {submitting ? "Реєструю..." : "Зареєструватися"}
       </button>
 
       <button type="button" className={styles.linkMuted} onClick={onGoSignIn}>
