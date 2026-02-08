@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 
 import { listingsApi } from "../../api/listings";
 import { requestsApi } from "../../api/requests";
@@ -188,12 +188,14 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
     [item?.availableFrom],
   );
 
+  const ownerId = useMemo(() => getListingOwnerId(item), [item]);
+
   const isOwnListing = useMemo(() => {
     const uid = currentUser?.id ? String(currentUser.id) : null;
-    const oid = getListingOwnerId(item);
+    const oid = ownerId;
     if (!uid || !oid) return false;
     return uid === oid;
-  }, [currentUser, item]);
+  }, [currentUser, ownerId]);
 
   const canCheckMyRequest = Boolean(currentUser?.id) && Boolean(item?.id);
 
@@ -345,6 +347,19 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
   };
 
   const onMainImgError = () => setImageBroken(true);
+
+  const landlordTitle = useMemo(() => {
+    const name = item?.landlordName ? String(item.landlordName) : "";
+    const rating =
+      typeof item?.landlordRating === "number" ? item.landlordRating : null;
+
+    if (!name && rating === null) return "—";
+    if (!name && rating !== null) return `— (Рейтинг: ${rating})`;
+    if (name && rating === null) return name;
+    return `${name} (Рейтинг: ${rating})`;
+  }, [item?.landlordName, item?.landlordRating]);
+
+  const canOpenOwner = Boolean(ownerId) && !isOwnListing;
 
   return (
     <div className={styles.page}>
@@ -543,11 +558,26 @@ export default function ListingDetailsPage({ currentUser, onRequestViewing }) {
                 <div className={styles.metaGrid}>
                   <div className={styles.metaItem}>
                     <div className={styles.metaLabel}>Орендодавець</div>
+
                     <div className={styles.metaValue}>
-                      {item.landlordName || "—"}
-                      {typeof item.landlordRating === "number"
-                        ? ` (Рейтинг: ${item.landlordRating})`
-                        : ""}
+                      {canOpenOwner ? (
+                        <Link
+                          to={`/users/${encodeURIComponent(ownerId)}`}
+                          state={{ from: location }}
+                          className={styles.ownerLink}
+                          title="Відкрити профіль орендодавця"
+                        >
+                          {landlordTitle}
+                        </Link>
+                      ) : (
+                        landlordTitle
+                      )}
+
+                      {!ownerId && (
+                        <span className={styles.ownerHint}>
+                          (нема id — бэкенд не віддав)
+                        </span>
+                      )}
                     </div>
                   </div>
 

@@ -1,107 +1,160 @@
 import { Injectable } from '@nestjs/common';
-import { listings } from '../listings/listings.store';
-import { requests, RequestStatus } from '../requests/requests.store';
-import { ContractStatus, contracts, type Contract } from './contracts.store';
+import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
+import { ContractStatus, Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
 import type { UpdateContractDto } from './dto/update-contract.dto';
 
 type CreateFromRequestResult =
-  | Contract
+  | { ok: true; contractId: string }
   | null
   | 'FORBIDDEN'
   | 'REQUEST_NOT_APPROVED'
   | 'ALREADY_EXISTS';
 
-type UpdateStatusResult = Contract | null | 'FORBIDDEN' | 'INVALID_TRANSITION';
+type UpdateStatusResult =
+  | { ok: true; status: ContractStatus }
+  | null
+  | 'FORBIDDEN'
+  | 'INVALID_TRANSITION'
+  | 'ACTIVE_CONTRACT_EXISTS';
 
 @Injectable()
 export class ContractsService {
-  createFromRequest(
+  constructor(private readonly prisma: PrismaService) {}
+
+  async createFromRequest(
     requestId: string,
     ownerId: string,
-  ): CreateFromRequestResult {
-    const req = requests.find((r) => r.id === requestId);
+  ): Promise<CreateFromRequestResult> {
+    const req = await this.prisma.bookingRequest.findUnique({
+      where: { id: requestId },
+      select: {
+        id: true,
+        status: true,
+        from: true,
+        to: true,
+        tenantId: true,
+        listing: {
+          select: {
+            id: true,
+            ownerId: true,
+          },
+        },
+      },
+    });
+
     if (!req) return null;
+    if (req.listing.ownerId !== ownerId) return 'FORBIDDEN';
+    if (req.status !== 'APPROVED') return 'REQUEST_NOT_APPROVED';
 
-    const listing = listings.find((l) => l.id === req.listingId);
-    if (!listing) return null;
+    const exists = await this.prisma.contract.findFirst({
+      where: {
+        listingId: req.listing.id,
+        tenantId: req.tenantId,
+        status: { in: ['DRAFT', 'SIGNED', 'COMPLETED'] },
+      },
+      select: { id: true },
+    });
 
-    if (listing.ownerId !== ownerId) return 'FORBIDDEN';
-    if (req.status !== RequestStatus.APPROVED) return 'REQUEST_NOT_APPROVED';
-
-    const exists = contracts.find((c) => c.requestId === requestId);
     if (exists) return 'ALREADY_EXISTS';
 
-    const from = req.from ?? new Date().toISOString().slice(0, 10);
-    const to = req.to ?? new Date().toISOString().slice(0, 10);
+    const created = await this.prisma.contract.create({
+      data: {
+        listingId: req.listing.id,
+        ownerId,
+        tenantId: req.tenantId,
+        status: 'DRAFT',
+        activeKey: null,
+        from: req.from ?? null,
+        to: req.to ?? null,
+      },
+      select: { id: true },
+    });
 
-    const contract: Contract = {
-      id: crypto.randomUUID(),
-      requestId,
-      listingId: req.listingId,
-      ownerId: listing.ownerId,
-      tenantId: req.tenantId,
-      price: listing.price,
-      from,
-      to,
-      status: ContractStatus.DRAFT,
-      createdAt: new Date().toISOString(),
-    };
-
-    contracts.unshift(contract);
-    return contract;
+    return { ok: true, contractId: created.id };
   }
 
-  getMy(userId: string): Contract[] {
-    return contracts.filter(
-      (c) => c.ownerId === userId || c.tenantId === userId,
-    );
+  async getMy(userId: string) {
+    return this.prisma.contract.findMany({
+      where: {
+        OR: [{ ownerId: userId }, { tenantId: userId }],
+      },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        status: true,
+        ownerId: true,
+        tenantId: true,
+        listingId: true,
+        createdAt: true,
+        reviews: {
+          select: { id: true, authorId: true, targetId: true, rating: true },
+        },
+      },
+    });
   }
 
-  updateStatus(
+  async updateStatus(
     contractId: string,
     userId: string,
     dto: UpdateContractDto,
-  ): UpdateStatusResult {
-    const idx = contracts.findIndex((c) => c.id === contractId);
-    if (idx === -1) return null;
+  ): Promise<UpdateStatusResult> {
+    const contract = await this.prisma.contract.findUnique({
+      where: { id: contractId },
+      select: {
+        id: true,
+        listingId: true,
+        status: true,
+        ownerId: true,
+        tenantId: true,
+      },
+    });
 
-    const current = contracts[idx];
-    const next = dto.status;
+    if (!contract) return null;
 
-    const isOwner = current.ownerId === userId;
-    const isTenant = current.tenantId === userId;
+    const isOwner = contract.ownerId === userId;
+    const isTenant = contract.tenantId === userId;
     if (!isOwner && !isTenant) return 'FORBIDDEN';
 
+    const next: ContractStatus = dto.status;
+
     const allowed =
-      (isTenant &&
-        current.status === ContractStatus.DRAFT &&
-        next === ContractStatus.SIGNED_BY_TENANT) ||
-      (isOwner &&
-        current.status === ContractStatus.SIGNED_BY_TENANT &&
-        next === ContractStatus.SIGNED) ||
+      (isOwner && contract.status === 'DRAFT' && next === 'SIGNED') ||
       ((isOwner || isTenant) &&
-        current.status !== ContractStatus.SIGNED &&
-        next === ContractStatus.CANCELLED);
+        contract.status === 'SIGNED' &&
+        next === 'COMPLETED') ||
+      ((isOwner || isTenant) &&
+        (contract.status === 'DRAFT' || contract.status === 'SIGNED') &&
+        next === 'CANCELLED');
 
     if (!allowed) return 'INVALID_TRANSITION';
 
-    const updated: Contract = { ...current, status: next };
-    contracts[idx] = updated;
+    try {
+      const updated = await this.prisma.$transaction(async (tx) => {
+        const data: Prisma.ContractUpdateArgs['data'] = { status: next };
 
-    if (
-      current.status !== ContractStatus.SIGNED &&
-      next === ContractStatus.SIGNED
-    ) {
-      const rIdx = requests.findIndex((r) => r.id === current.requestId);
-      if (rIdx !== -1) {
-        requests[rIdx] = { ...requests[rIdx], status: RequestStatus.COMPLETED };
+        if (contract.status !== 'SIGNED' && next === 'SIGNED') {
+          data.activeKey = contract.listingId;
+        }
+        if (contract.status === 'SIGNED' && next !== 'SIGNED') {
+          data.activeKey = null;
+        }
+
+        const u = await tx.contract.update({
+          where: { id: contract.id },
+          data,
+          select: { status: true },
+        });
+
+        return u;
+      });
+
+      return { ok: true, status: updated.status };
+    } catch (e: unknown) {
+      if (e instanceof PrismaClientKnownRequestError) {
+        if (e.code === 'P2002') return 'ACTIVE_CONTRACT_EXISTS';
       }
+      throw e;
     }
-
-    return updated;
-  }
-
-  getById(id: string): Contract | undefined {
-    return contracts.find((c) => c.id === id);
   }
 }

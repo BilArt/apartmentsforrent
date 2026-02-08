@@ -44,6 +44,18 @@ export default defineConfig({
         target: "http://localhost:3000",
         changeOrigin: true,
       },
+      "/users": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+      "/contracts": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
+      "/reviews": {
+        target: "http://localhost:3000",
+        changeOrigin: true,
+      },
     },
   },
 });

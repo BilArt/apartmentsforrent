@@ -26,8 +26,8 @@ const accessToClaims = new Map<
   { provider: BankIdProvider; claims: MockClaims; createdAt: number }
 >();
 
-const CODE_TTL_MS = 2 * 60 * 1000; // 2 минуты (можно 0, если не надо)
-const ACCESS_TTL_MS = 2 * 60 * 1000; // 2 минуты для mock-аксесса
+const CODE_TTL_MS = 2 * 60 * 1000;
+const ACCESS_TTL_MS = 2 * 60 * 1000;
 const EXPIRES_IN_SEC = 600;
 
 export function makeState() {
@@ -54,7 +54,6 @@ export function exchangeCodeForToken(code: string): TokenResponse {
     throw err;
   }
 
-  // TTL для кода (опционально, но полезно)
   if (CODE_TTL_MS > 0 && Date.now() - entry.createdAt > CODE_TTL_MS) {
     codeToClaims.delete(code);
     const err = new Error('code_expired');
@@ -63,7 +62,6 @@ export function exchangeCodeForToken(code: string): TokenResponse {
     throw err;
   }
 
-  // одноразовый code
   codeToClaims.delete(code);
 
   const access = crypto.randomBytes(24).toString('hex');
@@ -89,7 +87,6 @@ export function getUserInfo(accessToken: string) {
     throw err;
   }
 
-  // TTL на access_token
   if (ACCESS_TTL_MS > 0 && Date.now() - entry.createdAt > ACCESS_TTL_MS) {
     accessToClaims.delete(accessToken);
     const err = new Error('token_expired');
@@ -98,7 +95,6 @@ export function getUserInfo(accessToken: string) {
     throw err;
   }
 
-  // КРИТИЧНО: одноразовый access_token (consume)
   accessToClaims.delete(accessToken);
 
   return { provider: entry.provider, claims: entry.claims };

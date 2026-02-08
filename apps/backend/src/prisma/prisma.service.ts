@@ -14,5 +14,3 @@ export class PrismaService
     await this.$disconnect();
   }
 }
-
-console.log('DATABASE_URL=', process.env.DATABASE_URL);

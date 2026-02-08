@@ -3,9 +3,9 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { prisma } from '../db/prisma';
 import * as bcrypt from 'bcryptjs';
 import type { RegisterDto } from './dto/register.dto';
+import { PrismaService } from '../prisma/prisma.service';
 
 export type PublicUser = {
   id: string;
@@ -14,6 +14,8 @@ export type PublicUser = {
   firstName: string;
   lastName: string;
   phone: string;
+  bankIdVerified: boolean;
+  bankIdVerifiedAt: Date | null;
 };
 
 type DbUserWithHash = PublicUser & { passwordHash: string | null };
@@ -26,13 +28,17 @@ function toPublicUser(u: DbUserWithHash): PublicUser {
     firstName: u.firstName,
     lastName: u.lastName,
     phone: u.phone,
+    bankIdVerified: u.bankIdVerified,
+    bankIdVerifiedAt: u.bankIdVerifiedAt,
   };
 }
 
 @Injectable()
 export class AuthService {
+  constructor(private readonly prisma: PrismaService) {}
+
   async register(data: RegisterDto): Promise<PublicUser> {
-    const existsByBankId = await prisma.user.findUnique({
+    const existsByBankId = await this.prisma.user.findUnique({
       where: { bankId: data.bankId },
       select: { id: true },
     });
@@ -41,7 +47,7 @@ export class AuthService {
       throw new BadRequestException('User with this bankId already exists');
     }
 
-    const existsByPhone = await prisma.user.findFirst({
+    const existsByPhone = await this.prisma.user.findFirst({
       where: { phone: data.phone },
       select: { id: true },
     });
@@ -61,7 +67,7 @@ export class AuthService {
       );
     }
 
-    const user = await prisma.user.create({
+    const user = await this.prisma.user.create({
       data: {
         id: crypto.randomUUID(),
         bankId: data.bankId,
@@ -70,6 +76,8 @@ export class AuthService {
         phone: data.phone,
         rating: 0,
         passwordHash,
+        bankIdVerified: false,
+        bankIdVerifiedAt: null,
       },
       select: {
         id: true,
@@ -78,6 +86,8 @@ export class AuthService {
         firstName: true,
         lastName: true,
         phone: true,
+        bankIdVerified: true,
+        bankIdVerifiedAt: true,
         passwordHash: true,
       },
     });
@@ -86,7 +96,7 @@ export class AuthService {
   }
 
   async loginByBankId(bankId: string): Promise<PublicUser> {
-    const user = await prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { bankId },
       select: {
         id: true,
@@ -95,6 +105,8 @@ export class AuthService {
         firstName: true,
         lastName: true,
         phone: true,
+        bankIdVerified: true,
+        bankIdVerifiedAt: true,
         passwordHash: true,
       },
     });
@@ -104,7 +116,7 @@ export class AuthService {
   }
 
   async loginByPhone(phone: string, password: string): Promise<PublicUser> {
-    const user = await prisma.user.findFirst({
+    const user = await this.prisma.user.findFirst({
       where: { phone },
       select: {
         id: true,
@@ -113,6 +125,8 @@ export class AuthService {
         firstName: true,
         lastName: true,
         phone: true,
+        bankIdVerified: true,
+        bankIdVerifiedAt: true,
         passwordHash: true,
       },
     });
@@ -130,7 +144,7 @@ export class AuthService {
   }
 
   async getById(id: string): Promise<PublicUser | null> {
-    const user = await prisma.user.findUnique({
+    const user = await this.prisma.user.findUnique({
       where: { id },
       select: {
         id: true,
@@ -139,6 +153,8 @@ export class AuthService {
         firstName: true,
         lastName: true,
         phone: true,
+        bankIdVerified: true,
+        bankIdVerifiedAt: true,
         passwordHash: true,
       },
     });

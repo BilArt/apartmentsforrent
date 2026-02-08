@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styles from "./ProfilePage.module.scss";
+import { reviewsApi } from "../../api/reviews";
 
 function detectRole(user) {
   const id = String(user?.id || "").toLowerCase();
@@ -23,6 +24,12 @@ function maskBankId(bankId) {
   return `${s.slice(0, 4)}…${s.slice(-2)}`;
 }
 
+function fmtDate(value) {
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toISOString().slice(0, 10);
+}
+
 export default function ProfilePage({
   currentUser,
   authLoading,
@@ -38,10 +45,47 @@ export default function ProfilePage({
   const phone = currentUser?.phone || "—";
   const rating =
     typeof currentUser?.rating === "number" ? currentUser.rating : null;
+
+  const ratingCount =
+    typeof currentUser?.ratingCount === "number"
+      ? currentUser.ratingCount
+      : null;
+
   const bankId = maskBankId(currentUser?.bankId);
+  const isVerified = Boolean(currentUser?.bankIdVerified);
 
   const requestsLink =
     role === "Орендодавець" ? "/requests?tab=incoming" : "/requests?tab=my";
+
+  const [reviewsStatus, setReviewsStatus] = useState("idle");
+  const [reviewsError, setReviewsError] = useState("");
+  const [reviews, setReviews] = useState([]);
+
+  useEffect(() => {
+    if (!isAuthed || !currentUser?.id) return;
+
+    let alive = true;
+
+    (async () => {
+      setReviewsStatus("loading");
+      setReviewsError("");
+
+      try {
+        const list = await reviewsApi.getForUser(currentUser.id);
+        if (!alive) return;
+        setReviews(Array.isArray(list) ? list : []);
+        setReviewsStatus("ok");
+      } catch (e) {
+        if (!alive) return;
+        setReviewsStatus("error");
+        setReviewsError(e?.message || "Не вдалося завантажити відгуки");
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+  }, [isAuthed, currentUser?.id]);
 
   return (
     <div className={styles.page}>
@@ -85,10 +129,22 @@ export default function ProfilePage({
                 <div className={styles.cardTop}>
                   <div className={styles.avatar}>{name.slice(0, 1)}</div>
                   <div>
-                    <div className={styles.name}>{name}</div>
+                    <div className={styles.nameRow}>
+                      <div className={styles.name}>{name}</div>
+                      {isVerified && (
+                        <div
+                          className={styles.verifiedBadge}
+                          title="Профіль підтверджений через BankID"
+                        >
+                          BankID ✓
+                        </div>
+                      )}
+                    </div>
+
                     <div className={styles.sub}>
                       {role}
-                      {rating !== null ? ` • ⭐ ${rating}` : ""}
+                      {rating !== null ? ` • ${rating}` : ""}
+                      {ratingCount !== null ? ` • ${ratingCount} відгуків` : ""}
                     </div>
                   </div>
                 </div>
@@ -133,9 +189,84 @@ export default function ProfilePage({
                 </div>
 
                 <div className={styles.metaItem}>
+                  <div className={styles.metaLabel}>Підтвердження</div>
+                  <div className={styles.metaValue}>
+                    {isVerified ? "BankID verified" : "—"}
+                  </div>
+                </div>
+
+                <div className={styles.metaItem}>
                   <div className={styles.metaLabel}>User ID</div>
                   <div className={styles.metaValue}>{currentUser?.id}</div>
                 </div>
+              </div>
+
+              {/* НОВОЕ: отзывы в профиле */}
+              <div className={styles.reviewsBlock}>
+                <div className={styles.reviewsTitle}>Відгуки про тебе</div>
+
+                {reviewsStatus === "loading" && (
+                  <div className={styles.noteMuted}>Завантажуємо…</div>
+                )}
+
+                {reviewsStatus === "error" && (
+                  <div className={styles.stateError}>
+                    Помилка: {reviewsError}
+                  </div>
+                )}
+
+                {reviewsStatus === "ok" && reviews.length === 0 && (
+                  <div className={styles.noteMuted}>
+                    Поки що відгуків немає.
+                  </div>
+                )}
+
+                {reviewsStatus === "ok" && reviews.length > 0 && (
+                  <div className={styles.reviewsList}>
+                    {reviews.slice(0, 5).map((r) => {
+                      const author = fullName(r?.author);
+                      return (
+                        <div key={r.id} className={styles.reviewCard}>
+                          <div className={styles.reviewTop}>
+                            <div className={styles.reviewAuthor}>{author}</div>
+                            <div className={styles.reviewMeta}>
+                              <span className={styles.reviewRating}>
+                                {r.rating}/5
+                              </span>
+                              <span className={styles.dot}>•</span>
+                              <span className={styles.reviewDate}>
+                                {fmtDate(r.createdAt)}
+                              </span>
+                            </div>
+                          </div>
+
+                          {r.comment ? (
+                            <div className={styles.reviewText}>{r.comment}</div>
+                          ) : (
+                            <div className={styles.noteMuted}>
+                              Без коментаря
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                    {reviews.length > 5 ? (
+                      <button
+                        type="button"
+                        className={styles.secondaryBtn}
+                        onClick={() =>
+                          navigate(
+                            `/users/${encodeURIComponent(String(currentUser.id))}`,
+                          )
+                        }
+                        title="Відкрити публічний профіль з усіма відгуками"
+                      >
+                        Показати всі
+                      </button>
+                    ) : null}
+                  </div>
+                )}
               </div>
 
               <div className={styles.footerNote}>

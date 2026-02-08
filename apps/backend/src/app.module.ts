@@ -12,6 +12,9 @@ import { RequestsModule } from './requests/requests.module';
 import { GeoModule } from './geo/geo.module';
 import { MediaModule } from './media/media.module';
 import { ChatModule } from './chat/chat.module';
+import { UsersModule } from './users/users.module';
+import { ReviewsModule } from './reviews/reviews.module';
+import { ContractsModule } from './contracts/contracts.module';
 
 @Module({
   imports: [
@@ -23,6 +26,9 @@ import { ChatModule } from './chat/chat.module';
     GeoModule,
     MediaModule,
     ChatModule,
+    UsersModule,
+    ContractsModule,
+    ReviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

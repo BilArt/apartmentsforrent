@@ -1,3 +1,5 @@
+// apps/backend/prisma/schema.prisma
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -24,11 +26,18 @@ enum ContractStatus {
 model User {
   id        String   @id
   createdAt DateTime @default(now())
-  bankId    String   @unique
+
+  bankId    String @unique
   firstName String
   lastName  String
   phone     String
-  rating    Float    @default(0)
+
+  // Aggregates
+  rating      Float @default(0)
+  ratingCount Int   @default(0)
+
+  bankIdVerified   Boolean   @default(false)
+  bankIdVerifiedAt DateTime?
 
   passwordHash String?
 
@@ -43,6 +52,10 @@ model User {
   // Contracts
   contractsOwner  Contract[] @relation("ContractsOwner")
   contractsTenant Contract[] @relation("ContractsTenant")
+
+  // Reviews
+  reviewsAuthored Review[] @relation("ReviewsAuthored")
+  reviewsReceived Review[] @relation("ReviewsReceived")
 
   // Chat
   chatThreadsOwner  ChatThread[]  @relation("ChatThreadsOwner")
@@ -139,10 +152,6 @@ model Contract {
 
   status ContractStatus @default(DRAFT)
 
-  // ВАЖНО:
-  // Если контракт активный (SIGNED), то activeKey = listingId
-  // Если контракт не активный (DRAFT/COMPLETED/CANCELLED), то activeKey = null
-  // Это даёт гарантию на уровне БД: только один активный контракт на listing.
   activeKey String? @unique
 
   from DateTime?
@@ -152,15 +161,34 @@ model Contract {
   owner   User    @relation("ContractsOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   tenant  User    @relation("ContractsTenant", fields: [tenantId], references: [id], onDelete: Cascade)
 
+  // Reviews
+  reviews Review[]
+
   @@index([listingId])
   @@index([ownerId])
   @@index([tenantId])
 }
 
-/**
- * Chat: one thread per (listing + tenant).
- * Owner определяется через listing.ownerId.
- */
+model Review {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  contractId String
+  authorId   String
+  targetId   String
+
+  rating  Int
+  comment String?
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  author   User     @relation("ReviewsAuthored", fields: [authorId], references: [id], onDelete: Cascade)
+  target   User     @relation("ReviewsReceived", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, authorId])
+  @@index([targetId, createdAt])
+  @@index([authorId, createdAt])
+}
+
 model ChatThread {
   id        String   @id @default(cuid())
   createdAt DateTime @default(now())

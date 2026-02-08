@@ -105,7 +105,7 @@ export class BankIdController {
 
       const existing = await prisma.user.findUnique({
         where: { bankId },
-        select: { id: true },
+        select: { id: true, bankIdVerified: true },
       });
 
       if (flow === 'signin') {
@@ -114,6 +114,14 @@ export class BankIdController {
           url.searchParams.set('authError', 'bankid_no_account');
           res.setHeader('Cache-Control', 'no-store');
           return res.redirect(url.toString());
+        }
+
+        if (!existing.bankIdVerified) {
+          await prisma.user.update({
+            where: { id: existing.id },
+            data: { bankIdVerified: true, bankIdVerifiedAt: new Date() },
+            select: { id: true },
+          });
         }
 
         session.userId = existing.id;
@@ -125,6 +133,14 @@ export class BankIdController {
 
       if (existing) {
         userId = existing.id;
+
+        if (!existing.bankIdVerified) {
+          await prisma.user.update({
+            where: { id: userId },
+            data: { bankIdVerified: true, bankIdVerifiedAt: new Date() },
+            select: { id: true },
+          });
+        }
       } else {
         const created = await prisma.user.create({
           data: {
@@ -134,6 +150,8 @@ export class BankIdController {
             lastName: claims.lastName,
             phone: claims.phone,
             rating: 0,
+            bankIdVerified: true,
+            bankIdVerifiedAt: new Date(),
           },
           select: { id: true },
         });

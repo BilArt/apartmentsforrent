@@ -268,6 +268,35 @@
   word-break: break-word;
 }
 
+/* ✅ NEW: clickable owner */
+.ownerLink {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-weight: 700;
+  border-bottom: 1px dashed rgba(255, 92, 98, 0.55);
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    opacity 160ms ease;
+
+  &:hover {
+    color: var(--color-primary-hover, #e6455c);
+    border-bottom-color: rgba(255, 92, 98, 0.9);
+  }
+
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.ownerHint {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 120%;
+  color: rgba(0, 0, 0, 0.45);
+}
+
 .h2 {
   margin: 0 0 10px;
   font-size: 24px;

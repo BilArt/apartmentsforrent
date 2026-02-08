@@ -24,7 +24,6 @@
   border-color: rgba(0, 0, 0, 0.08);
 }
 
-/* ✅ фиксируем высоту медиа, чтобы все карточки были одинаковые */
 .media {
   position: relative;
   background: rgba(0, 0, 0, 0.04);
@@ -47,7 +46,6 @@
   display: block;
 }
 
-/* ✅ No photo placeholder */
 .noPhoto {
   width: 100%;
   height: 100%;
@@ -67,7 +65,6 @@
   background: rgba(0, 0, 0, 0.03);
 }
 
-/* ✅ Carousel controls */
 .navBtn {
   position: absolute;
   top: 50%;

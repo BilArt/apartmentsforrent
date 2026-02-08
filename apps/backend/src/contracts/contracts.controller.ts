@@ -27,13 +27,21 @@ export class ContractsController {
   }
 
   @UseGuards(SessionGuard)
+  @Get('my')
+  my(@Req() req: Request) {
+    const userId = String(req.session.userId);
+    return this.contracts.getMy(userId);
+  }
+
+  @UseGuards(SessionGuard)
   @Post('from-request/:requestId')
-  createFromRequest(
+  async createFromRequest(
     @Param('requestId') requestId: string,
     @Req() req: Request,
   ) {
-    const ownerId = req.session.userId!;
-    const res = this.contracts.createFromRequest(requestId, ownerId);
+    const ownerId = String(req.session.userId);
+
+    const res = await this.contracts.createFromRequest(requestId, ownerId);
 
     if (res === null) throw new NotFoundException('Request not found');
     if (res === 'FORBIDDEN')
@@ -43,33 +51,31 @@ export class ContractsController {
         'Request must be APPROVED to create contract',
       );
     if (res === 'ALREADY_EXISTS')
-      throw new BadRequestException('Contract for this request already exists');
+      throw new BadRequestException('Contract already exists');
 
     return res;
   }
 
   @UseGuards(SessionGuard)
   @Patch(':id')
-  update(
+  async update(
     @Param('id') id: string,
     @Req() req: Request,
     @Body() dto: UpdateContractDto,
   ) {
-    const userId = req.session.userId!;
-    const res = this.contracts.updateStatus(id, userId, dto);
+    const userId = String(req.session.userId);
+
+    const res = await this.contracts.updateStatus(id, userId, dto);
 
     if (res === null) throw new NotFoundException('Contract not found');
     if (res === 'FORBIDDEN') throw new ForbiddenException('Not your contract');
     if (res === 'INVALID_TRANSITION')
       throw new BadRequestException('Invalid status transition');
+    if (res === 'ACTIVE_CONTRACT_EXISTS')
+      throw new BadRequestException(
+        'Active contract already exists for this listing',
+      );
 
     return res;
-  }
-
-  @UseGuards(SessionGuard)
-  @Get('my')
-  my(@Req() req: Request) {
-    const userId = req.session.userId!;
-    return this.contracts.getMy(userId);
   }
 }

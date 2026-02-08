@@ -20,6 +20,7 @@ import RatingPage from "./pages/RatingPage/RatingPage";
 import NewListingPage from "./pages/NewListingPage/NewListingPage";
 import ChatPage from "./pages/ChatPage/ChatPage";
 import ChatsPage from "./pages/ChatsPage/ChatsPage";
+import UserPublicPage from "./pages/UserPublicPage/UserPublicPage";
 
 import Header from "./components/Header/Header";
 import Footer from "./components/Footer/Footer";
@@ -207,6 +208,10 @@ function App() {
         <Route path="/bankid" element={<BankIdPage />} />
         <Route path="/rating" element={<RatingPage />} />
         <Route path="/listings/new" element={<NewListingPage />} />
+        <Route
+          path="/users/:userId"
+          element={<UserPublicPage currentUser={currentUser} />}
+        />
 
         <Route
           path="/listings"

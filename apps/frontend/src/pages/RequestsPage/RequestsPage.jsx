@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  Link,
+  useLocation,
+  useNavigate,
+  useSearchParams,
+} from "react-router-dom";
 import { requestsApi } from "../../api/requests";
 import styles from "./RequestsPage.module.scss";
 
@@ -55,6 +60,7 @@ export default function RequestsPage({
   onRequireAuth,
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const tabFromUrl = searchParams.get("tab");
@@ -276,13 +282,20 @@ export default function RequestsPage({
           const to = formatUaDateFromIso(r?.to);
 
           const tenantName = getPersonName(r?.tenant);
+          const tenantId = r?.tenant?.id || r?.tenantId;
           const tenantRating =
             typeof r?.tenant?.rating === "number"
               ? ` (${r.tenant.rating})`
               : "";
 
-          const landlordLabel =
-            r?.listing?.landlordName || r?.listing?.ownerId || "—";
+          const ownerName =
+            r?.listing?.landlordName || getPersonName(r?.owner) || "—";
+          const ownerId =
+            r?.owner?.id ||
+            r?.listing?.ownerId ||
+            r?.ownerId ||
+            r?.listing?.owner?.id;
+
           const isUpdating = updatingIds.has(rid);
 
           const isPending = r.status === "PENDING";
@@ -291,6 +304,15 @@ export default function RequestsPage({
           const isCompleted = r.status === "COMPLETED";
 
           const actionError = actionErrors[rid];
+
+          const counterpartId = tab === "incoming" ? tenantId : ownerId;
+          const counterpartLabel =
+            tab === "incoming" ? `${tenantName}${tenantRating}` : ownerName;
+
+          const counterpartTitle =
+            tab === "incoming"
+              ? "Перейти до профілю орендаря"
+              : "Перейти до профілю орендодавця";
 
           return (
             <article key={rid} className={styles.card}>
@@ -313,7 +335,11 @@ export default function RequestsPage({
                   <button
                     type="button"
                     className={styles.ghostBtn}
-                    onClick={() => navigate(`/listings/${r.listingId}`)}
+                    onClick={() =>
+                      navigate(`/listings/${r.listingId}`, {
+                        state: { from: location },
+                      })
+                    }
                   >
                     Відкрити
                   </button>
@@ -369,10 +395,23 @@ export default function RequestsPage({
                   <div className={styles.metaLabel}>
                     {tab === "incoming" ? "Орендар" : "Орендодавець"}
                   </div>
+
                   <div className={styles.metaValue}>
-                    {tab === "incoming"
-                      ? `${tenantName}${tenantRating}`
-                      : landlordLabel}
+                    {counterpartId ? (
+                      <Link
+                        to={`/users/${encodeURIComponent(String(counterpartId))}`}
+                        state={{ from: location }}
+                        title={counterpartTitle}
+                        style={{
+                          color: "inherit",
+                          textDecoration: "underline",
+                        }}
+                      >
+                        {counterpartLabel}
+                      </Link>
+                    ) : (
+                      counterpartLabel
+                    )}
                   </div>
                 </div>
 

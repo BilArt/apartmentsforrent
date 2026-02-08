@@ -72,6 +72,8 @@ export default function Header({
     return `${first} ${last}`.trim() || "Профіль";
   }, [currentUser]);
 
+  const isVerified = Boolean(currentUser?.bankIdVerified);
+
   return (
     <header className={styles.header}>
       <div className="container">
@@ -126,7 +128,18 @@ export default function Header({
                   <span className={styles.userIcon} aria-hidden="true">
                     <ProfileIcon />
                   </span>
-                  <span className={styles.userName}>{userFullName}</span>
+
+                  <span className={styles.userNameWrap}>
+                    <span className={styles.userName}>{userFullName}</span>
+                    {isVerified && (
+                      <span
+                        className={styles.verifiedBadge}
+                        title="Профіль підтверджений через BankID"
+                      >
+                        BankID ✓
+                      </span>
+                    )}
+                  </span>
                 </button>
 
                 {menuOpen && (
@@ -202,7 +215,9 @@ export default function Header({
           <div className={styles.burgerWrap} ref={mobileRef}>
             <button
               type="button"
-              className={`${styles.burgerBtn} ${mobileOpen ? styles.burgerBtnOpen : ""}`}
+              className={`${styles.burgerBtn} ${
+                mobileOpen ? styles.burgerBtnOpen : ""
+              }`}
               onClick={toggleMobile}
               aria-expanded={mobileOpen}
               aria-label={mobileOpen ? "Close menu" : "Open menu"}
@@ -256,7 +271,7 @@ export default function Header({
                       className={styles.burgerItem}
                       onClick={() => go("/profile")}
                     >
-                      Мій профіль
+                      Мій профіль {isVerified ? "• BankID ✓" : ""}
                     </button>
                     <button
                       type="button"

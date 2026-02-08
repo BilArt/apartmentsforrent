@@ -25,6 +25,13 @@ function isAuthErrorMessage(msg) {
   );
 }
 
+function fullName(u) {
+  const fn = toStr(u?.firstName);
+  const ln = toStr(u?.lastName);
+  const s = `${fn} ${ln}`.trim();
+  return s || "Користувач";
+}
+
 export default function ChatPage({ currentUser }) {
   const navigate = useNavigate();
   const location = useLocation();
@@ -37,6 +44,8 @@ export default function ChatPage({ currentUser }) {
   const [error, setError] = useState("");
 
   const [threadId, setThreadId] = useState(threadIdFromUrl || "");
+  const [threadMeta, setThreadMeta] = useState(null);
+
   const [messages, setMessages] = useState([]);
   const [sending, setSending] = useState(false);
   const [text, setText] = useState("");
@@ -58,6 +67,47 @@ export default function ChatPage({ currentUser }) {
   useEffect(() => {
     activeThreadRef.current = threadId;
   }, [threadId]);
+
+  const authorNameById = useMemo(() => {
+    const map = new Map();
+
+    const meId = toStr(currentUser?.id);
+    if (meId) map.set(meId, fullName(currentUser));
+
+    const owner = threadMeta?.owner;
+    const tenant = threadMeta?.tenant;
+
+    const ownerId = toStr(threadMeta?.ownerId || owner?.id);
+    const tenantId = toStr(threadMeta?.tenantId || tenant?.id);
+
+    if (ownerId) map.set(ownerId, fullName(owner) || "Орендодавець");
+    if (tenantId) map.set(tenantId, fullName(tenant) || "Орендар");
+
+    return map;
+  }, [currentUser, threadMeta]);
+
+  const getAuthorLabel = (authorId, mine) => {
+    if (mine) return "Ви";
+    const name = authorNameById.get(toStr(authorId));
+    return name || "Співрозмовник";
+  };
+
+  const loadThreadMeta = async (tid) => {
+    if (!tid) return;
+
+    if (typeof chatApi.getThread === "function") {
+      const meta = await chatApi.getThread(tid);
+      setThreadMeta(meta || null);
+      return;
+    }
+
+    if (listingId) {
+      const threads = await chatApi.getThreads({ listingId });
+      const arr = Array.isArray(threads) ? threads : threads?.items || [];
+      const found = arr.find((t) => toStr(t?.id) === toStr(tid));
+      setThreadMeta(found || null);
+    }
+  };
 
   const loadMessages = async (tid, { silent = false } = {}) => {
     if (!tid) return;
@@ -114,6 +164,12 @@ export default function ChatPage({ currentUser }) {
           setThreadId(tid);
           activeThreadRef.current = tid;
 
+          try {
+            await loadThreadMeta(tid);
+          } catch {
+            //
+          }
+
           await loadMessages(tid);
           if (!alive) return;
 
@@ -133,9 +189,11 @@ export default function ChatPage({ currentUser }) {
 
         if (first?.id) {
           tid = String(first.id);
+          setThreadMeta(first || null);
         } else {
           const created = await chatApi.createThread({ listingId });
           tid = created?.id ? String(created.id) : "";
+          setThreadMeta(created || null);
         }
 
         if (!tid) throw new Error("Не вдалося створити/знайти чат.");
@@ -143,6 +201,12 @@ export default function ChatPage({ currentUser }) {
         if (!alive) return;
         setThreadId(tid);
         activeThreadRef.current = tid;
+
+        try {
+          await loadThreadMeta(tid);
+        } catch {
+          //
+        }
 
         await loadMessages(tid);
         if (!alive) return;
@@ -240,6 +304,18 @@ export default function ChatPage({ currentUser }) {
     }
   };
 
+  const titleLeft = threadMeta?.listing?.title
+    ? `Оголошення: ${threadMeta.listing.title}`
+    : listingId
+      ? `Оголошення: ${listingId}`
+      : "Чат";
+
+  const titleRight = threadMeta
+    ? `Учасники: ${fullName(threadMeta.owner)} • ${fullName(threadMeta.tenant)}`
+    : currentUser?.firstName
+      ? `Ви: ${currentUser.firstName}`
+      : "";
+
   return (
     <div className={styles.page}>
       <div className="container">
@@ -279,12 +355,8 @@ export default function ChatPage({ currentUser }) {
         {status === "ok" && (
           <div className={styles.card}>
             <div className={styles.meta}>
-              <div className={styles.metaText}>
-                {listingId ? `Оголошення: ${listingId}` : "Чат"}
-              </div>
-              <div className={styles.metaTextMuted}>
-                {currentUser?.firstName ? `Ви: ${currentUser.firstName}` : ""}
-              </div>
+              <div className={styles.metaText}>{titleLeft}</div>
+              <div className={styles.metaTextMuted}>{titleRight}</div>
             </div>
 
             <div className={styles.messages} ref={listRef}>
@@ -296,15 +368,23 @@ export default function ChatPage({ currentUser }) {
                     currentUser?.id &&
                     authorId &&
                     String(currentUser.id) === authorId;
+
                   const textMsg =
                     String(m?.text ?? m?.message ?? "").trim() || "—";
+
+                  const authorLabel = getAuthorLabel(authorId, mine);
 
                   return (
                     <div
                       key={mid}
                       className={mine ? styles.msgMine : styles.msgOther}
                     >
-                      <div className={styles.bubble}>{textMsg}</div>
+                      <div className={styles.msgCol}>
+                        {!mine && (
+                          <div className={styles.authorName}>{authorLabel}</div>
+                        )}
+                        <div className={styles.bubble}>{textMsg}</div>
+                      </div>
                     </div>
                   );
                 })
